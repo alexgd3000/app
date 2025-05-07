@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = {
         ...req.body,
         estimatedTime: Math.round(parseFloat(req.body.estimatedTime) * 60),
-        timeAvailable: Math.round(parseFloat(req.body.timeAvailable) * 60),
+        timeAvailable: 120, // Default value of 2 hours
         dueDate: new Date(req.body.dueDate)
       };
       

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -49,7 +49,7 @@ const editAssignmentSchema = insertAssignmentSchema
   .extend({
     id: z.number(),
   })
-  .omit({ completed: true, createdAt: true });
+  .omit({ completed: true, createdAt: true, timeAvailable: true });
 
 type EditAssignmentFormValues = z.infer<typeof editAssignmentSchema>;
 
@@ -94,7 +94,7 @@ export default function EditAssignmentDialog({
   });
 
   // Reset form when assignment changes
-  useState(() => {
+  useEffect(() => {
     if (assignment) {
       form.reset({
         id: assignment.id,
@@ -106,7 +106,7 @@ export default function EditAssignmentDialog({
         estimatedTime: assignment.estimatedTime,
       });
     }
-  });
+  }, [assignment, form]);
 
   // Update assignment mutation
   const updateMutation = useMutation({
