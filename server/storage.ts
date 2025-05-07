@@ -425,9 +425,11 @@ export class MemStorage implements IStorage {
     scheduleItems: ScheduleItem[];
     notScheduled: { taskId: number; assignmentId: number }[];
     totalTasksTime: number;
+    todaysDueTasksTime: number; // Time needed for today's and overdue tasks only
     todaysDueCompleted: boolean;
     extraTasksAdded: number;
     todaysUnscheduledCount: number;
+    unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[];
   }> {
     const result: ScheduleItem[] = [];
     const notScheduled: { taskId: number; assignmentId: number }[] = [];
@@ -462,7 +464,8 @@ export class MemStorage implements IStorage {
       }
     }
     
-    const now = new Date();
+    // Get current time for overdue checking
+    const currentTime = new Date();
     
     // Sort tasks:
     // 1. First by overdue status (overdue assignments first)
@@ -475,8 +478,8 @@ export class MemStorage implements IStorage {
       if (!assignmentA || !assignmentB) return 0;
       
       // Overdue status - overdue assignments get highest priority
-      const aIsOverdue = new Date(assignmentA.dueDate) < now;
-      const bIsOverdue = new Date(assignmentB.dueDate) < now;
+      const aIsOverdue = new Date(assignmentA.dueDate) < currentTime;
+      const bIsOverdue = new Date(assignmentB.dueDate) < currentTime;
       
       if (aIsOverdue && !bIsOverdue) return -1; // A is overdue, B is not, so A comes first
       if (!aIsOverdue && bIsOverdue) return 1;  // B is overdue, A is not, so B comes first
@@ -609,13 +612,12 @@ export class MemStorage implements IStorage {
       
       // Check if all tasks due today have been scheduled
       const tasksNotScheduled = notScheduled.map(item => item.taskId);
-      const now = new Date();
       const todaysDueTasks = allTasks.filter(task => {
         const assignment = assignmentsMap.get(task.assignmentId);
         // Include both tasks due today and tasks that are already overdue
         return assignment && (
           new Date(assignment.dueDate) <= today || // Due today
-          new Date(assignment.dueDate) < now       // Already overdue
+          new Date(assignment.dueDate) < currentTime // Already overdue
         );
       });
       
@@ -643,7 +645,7 @@ export class MemStorage implements IStorage {
               // Only consider tasks not due today and not overdue
               if (
                 new Date(assignment.dueDate) <= today || // Due today
-                new Date(assignment.dueDate) < now       // Already overdue
+                new Date(assignment.dueDate) < currentTime // Already overdue
               ) return null;
               
               return { 
@@ -707,28 +709,59 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Count today's and overdue unscheduled tasks for warning message
+    // Process today's and overdue unscheduled tasks for warning message
     const today = new Date(startDate);
     today.setHours(23, 59, 59, 999);
     
-    const now = new Date();
+    // Clear the redeclaration of now
     let todaysUnscheduledCount = 0;
+    let todaysDueTasksTime = 0;
+    const unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[] = [];
     
-    // Count tasks not scheduled that are due today or already overdue for warning purposes
-    for (const item of notScheduled) {
-      const assignment = assignmentsMap.get(item.assignmentId);
-      if (assignment && (new Date(assignment.dueDate) <= today || new Date(assignment.dueDate) < now)) {
-        todaysUnscheduledCount++;
+    // Calculate total time needed for today's and overdue tasks
+    for (const task of allTasks) {
+      const assignment = assignmentsMap.get(task.assignmentId);
+      if (assignment && (new Date(assignment.dueDate) <= today || new Date(assignment.dueDate) < currentTime)) {
+        todaysDueTasksTime += task.timeAllocation;
       }
     }
+    
+    // Process unscheduled tasks that are due today or already overdue for warning purposes
+    for (const item of notScheduled) {
+      const task = allTasks.find(t => t.id === item.taskId);
+      const assignment = assignmentsMap.get(item.assignmentId);
+      
+      if (task && assignment) {
+        // Check if task is due today or overdue
+        const isDueToday = new Date(assignment.dueDate) <= today; 
+        const isOverdue = new Date(assignment.dueDate) < currentTime;
+        
+        if (isDueToday || isOverdue) {
+          todaysUnscheduledCount++;
+          
+          // Add detailed information about this unscheduled task
+          unscheduledTaskDetails.push({
+            id: task.id,
+            description: task.description,
+            assignmentTitle: assignment.title,
+            timeAllocation: task.timeAllocation
+          });
+        }
+      }
+    }
+    
+    // Sort unscheduled tasks by time allocation (descending)
+    unscheduledTaskDetails.sort((a, b) => b.timeAllocation - a.timeAllocation);
     
     return {
       scheduleItems: result,
       notScheduled,
       totalTasksTime: totalTimeNeeded,
+      todaysDueTasksTime,
       todaysDueCompleted: todaysDueCompleted || false,
       extraTasksAdded: extraTasksAdded,
-      todaysUnscheduledCount
+      todaysUnscheduledCount,
+      unscheduledTaskDetails
     };
   }
 }
