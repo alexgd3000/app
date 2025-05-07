@@ -149,10 +149,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Format time data if present
       let body = req.body;
       if (body.timeAllocation !== undefined) {
-        body.timeAllocation = Math.round(parseFloat(body.timeAllocation) * 60);
+        body.timeAllocation = Math.round(parseFloat(body.timeAllocation));
       }
       if (body.timeSpent !== undefined) {
-        body.timeSpent = Math.round(parseFloat(body.timeSpent) * 60);
+        body.timeSpent = Math.round(parseFloat(body.timeSpent));
       }
       
       const updated = await storage.updateTask(id, body);
