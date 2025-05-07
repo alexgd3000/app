@@ -19,14 +19,28 @@ interface ScheduleTimelineProps {
 
 export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }: ScheduleTimelineProps) {
   const { toast } = useToast();
-  const [availableMinutes, setAvailableMinutes] = useState<number | undefined>(undefined);
+  const [availableHours, setAvailableHours] = useState<string>('');
+  const [availableMinutes, setAvailableMinutes] = useState<string>('');
   const [notScheduledTasks, setNotScheduledTasks] = useState<{ taskId: number; assignmentId: number }[]>([]);
   const [totalTasksTime, setTotalTasksTime] = useState<number>(0);
   const [showWarning, setShowWarning] = useState<boolean>(false);
   
+  // Calculate total minutes from hours and minutes inputs
+  const getTotalMinutes = (): number | undefined => {
+    const hours = availableHours ? parseInt(availableHours, 10) : 0;
+    const minutes = availableMinutes ? parseInt(availableMinutes, 10) : 0;
+    
+    // Return undefined if both are empty (use default time)
+    if (availableHours === '' && availableMinutes === '') {
+      return undefined;
+    }
+    
+    return (hours * 60) + minutes;
+  };
+
   const generateScheduleMutation = useMutation({
     mutationFn: async () => {
-      // Get all incomplete assignment IDs
+      // Get all incomplete assignment IDs with due dates
       const response = await fetch('/api/assignments/incomplete');
       const assignments = await response.json();
       
@@ -34,16 +48,26 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
         throw new Error("No assignments available to schedule");
       }
       
-      const assignmentIds = assignments.map((a: any) => a.id);
+      // Sort assignments by due date (upcoming first)
+      const sortedAssignments = [...assignments].sort((a, b) => {
+        const dateA = new Date(a.dueDate);
+        const dateB = new Date(b.dueDate);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      // Get assignmentIds
+      const assignmentIds = sortedAssignments.map((a: any) => a.id);
       
       // Generate a schedule with available minutes if provided
       const payload: any = {
         assignmentIds,
-        startDate: new Date().toISOString()
+        startDate: new Date().toISOString(),
+        prioritizeTodaysDue: true // New flag to prioritize today's due tasks
       };
       
-      if (availableMinutes) {
-        payload.availableMinutes = availableMinutes;
+      const totalMinutes = getTotalMinutes();
+      if (totalMinutes !== undefined) {
+        payload.availableMinutes = totalMinutes;
       }
       
       const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, payload);
@@ -156,19 +180,29 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
           </div>
           
           <div className="flex space-x-3 items-center">
-            <div className="relative">
-              <Input
-                type="number"
-                min="15"
-                placeholder="Available minutes"
-                className="w-[150px] pl-8"
-                value={availableMinutes || ""}
-                onChange={(e) => {
-                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                  setAvailableMinutes(value);
-                }}
-              />
-              <i className="ri-time-line absolute left-2.5 top-2.5 text-gray-400"></i>
+            <div className="flex space-x-2 items-center">
+              <div className="relative">
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Hours"
+                  className="w-[80px] pl-8"
+                  value={availableHours}
+                  onChange={(e) => setAvailableHours(e.target.value)}
+                />
+                <i className="ri-time-line absolute left-2.5 top-2.5 text-gray-400"></i>
+              </div>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  placeholder="Mins"
+                  className="w-[70px]"
+                  value={availableMinutes}
+                  onChange={(e) => setAvailableMinutes(e.target.value)}
+                />
+              </div>
             </div>
             
             <Button 
@@ -202,7 +236,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               <p>Some tasks couldn't be scheduled due to your time constraints.</p>
               <p className="mt-1 text-sm">
                 Total task time needed: <strong>{formatMinutesToHours(totalTasksTime)}</strong>, 
-                Available time: <strong>{availableMinutes ? formatMinutesToHours(availableMinutes) : "Auto (9am-6pm)"}</strong>
+                Available time: <strong>{getTotalMinutes() ? formatMinutesToHours(getTotalMinutes() || 0) : "Auto (9am-6pm)"}</strong>
               </p>
               <p className="mt-3 mb-1 text-sm font-medium">Unscheduled tasks: {notScheduledTasks.length}</p>
             </AlertDescription>
@@ -233,17 +267,25 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               Generate a schedule to optimize your workday
             </p>
             <div className="mt-3 flex items-center justify-center gap-2">
-              <Input
-                type="number"
-                min="15"
-                placeholder="Available minutes"
-                className="w-[150px]"
-                value={availableMinutes || ""}
-                onChange={(e) => {
-                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                  setAvailableMinutes(value);
-                }}
-              />
+              <div className="flex space-x-2">
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Hours"
+                  className="w-[80px]"
+                  value={availableHours}
+                  onChange={(e) => setAvailableHours(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  placeholder="Mins"
+                  className="w-[70px]"
+                  value={availableMinutes}
+                  onChange={(e) => setAvailableMinutes(e.target.value)}
+                />
+              </div>
               <Button 
                 onClick={() => generateScheduleMutation.mutate()}
                 disabled={generateScheduleMutation.isPending}
@@ -322,17 +364,25 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               <strong>{scheduleData.length}</strong> tasks scheduled for today
             </div>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="15"
-                placeholder="Available minutes"
-                className="w-[150px]"
-                value={availableMinutes || ""}
-                onChange={(e) => {
-                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                  setAvailableMinutes(value);
-                }}
-              />
+              <div className="flex space-x-2">
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Hours"
+                  className="w-[80px]"
+                  value={availableHours}
+                  onChange={(e) => setAvailableHours(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  placeholder="Mins"
+                  className="w-[70px]"
+                  value={availableMinutes}
+                  onChange={(e) => setAvailableMinutes(e.target.value)}
+                />
+              </div>
               <Button 
                 variant="outline" 
                 size="sm"
