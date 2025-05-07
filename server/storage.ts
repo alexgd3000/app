@@ -689,16 +689,17 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Count today's unscheduled tasks for warning message
+    // Count today's and overdue unscheduled tasks for warning message
     const today = new Date(startDate);
     today.setHours(23, 59, 59, 999);
     
+    const now = new Date();
     let todaysUnscheduledCount = 0;
     
-    // Only count tasks not scheduled that are due today for warning purposes
+    // Count tasks not scheduled that are due today or already overdue for warning purposes
     for (const item of notScheduled) {
       const assignment = assignmentsMap.get(item.assignmentId);
-      if (assignment && new Date(assignment.dueDate) <= today) {
+      if (assignment && (new Date(assignment.dueDate) <= today || new Date(assignment.dueDate) < now)) {
         todaysUnscheduledCount++;
       }
     }

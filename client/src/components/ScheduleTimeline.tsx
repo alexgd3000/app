@@ -253,11 +253,11 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 {notScheduledTasks.length > 0 ? (
                   <>
                     <span className="text-red-600 font-medium">
-                      {data?.todaysUnscheduledCount || 0} tasks due today couldn't be scheduled
+                      {generateScheduleMutation.data?.todaysUnscheduledCount || 0} tasks due today couldn't be scheduled
                     </span>
-                    {data?.todaysUnscheduledCount !== notScheduledTasks.length && (
+                    {generateScheduleMutation.data?.todaysUnscheduledCount !== notScheduledTasks.length && (
                       <span className="ml-2">
-                        ({notScheduledTasks.length - (data?.todaysUnscheduledCount || 0)} future tasks also not scheduled)
+                        ({notScheduledTasks.length - (generateScheduleMutation.data?.todaysUnscheduledCount || 0)} future tasks also not scheduled)
                       </span>
                     )}
                   </>
