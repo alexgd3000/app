@@ -467,33 +467,66 @@ export class MemStorage implements IStorage {
     // Get current time for overdue checking
     const currentTime = new Date();
     
-    // Sort tasks:
-    // 1. First by overdue status (overdue assignments first)
-    // 2. Then by assignment priority (high > medium > low)
-    // 3. Finally by due date (closest first)
-    allTasks.sort((a, b) => {
-      const assignmentA = assignmentsMap.get(a.assignmentId);
-      const assignmentB = assignmentsMap.get(b.assignmentId);
-      
-      if (!assignmentA || !assignmentB) return 0;
-      
-      // Overdue status - overdue assignments get highest priority
-      const aIsOverdue = new Date(assignmentA.dueDate) < currentTime;
-      const bIsOverdue = new Date(assignmentB.dueDate) < currentTime;
-      
-      if (aIsOverdue && !bIsOverdue) return -1; // A is overdue, B is not, so A comes first
-      if (!aIsOverdue && bIsOverdue) return 1;  // B is overdue, A is not, so B comes first
-      
-      // Priority sorting
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      const priorityDiff = priorityOrder[assignmentA.priority as keyof typeof priorityOrder] - 
-                           priorityOrder[assignmentB.priority as keyof typeof priorityOrder];
-      
-      if (priorityDiff !== 0) return priorityDiff;
-      
-      // Due date sorting
-      return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
-    });
+    // Get today's date with end of day time
+    const today = new Date(startDate);
+    today.setHours(23, 59, 59, 999);
+    
+    // Calculate time needed for today's and overdue tasks
+    let todaysDueTasksTime = 0;
+    const todaysAndOverdueTasks: Task[] = [];
+    const futureTasks: Task[] = [];
+    
+    // First, separate today's/overdue tasks from future tasks
+    for (const task of allTasks) {
+      const assignment = assignmentsMap.get(task.assignmentId);
+      if (assignment) {
+        const dueDate = new Date(assignment.dueDate);
+        if (dueDate <= today || dueDate < currentTime) {
+          // Task is due today or overdue
+          todaysDueTasksTime += task.timeAllocation;
+          todaysAndOverdueTasks.push(task);
+        } else {
+          // Task is due in the future
+          futureTasks.push(task);
+        }
+      }
+    }
+    
+    // Sort both groups separately
+    const sortTasksByPriorityAndDueDate = (tasks: Task[]) => {
+      return tasks.sort((a, b) => {
+        const assignmentA = assignmentsMap.get(a.assignmentId);
+        const assignmentB = assignmentsMap.get(b.assignmentId);
+        
+        if (!assignmentA || !assignmentB) return 0;
+        
+        // For today's and overdue tasks, overdue comes first
+        if (tasks === todaysAndOverdueTasks) {
+          const aIsOverdue = new Date(assignmentA.dueDate) < currentTime;
+          const bIsOverdue = new Date(assignmentB.dueDate) < currentTime;
+          
+          if (aIsOverdue && !bIsOverdue) return -1;
+          if (!aIsOverdue && bIsOverdue) return 1;
+        }
+        
+        // Priority sorting
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        const priorityDiff = priorityOrder[assignmentA.priority as keyof typeof priorityOrder] - 
+                            priorityOrder[assignmentB.priority as keyof typeof priorityOrder];
+        
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        // Due date sorting
+        return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
+      });
+    };
+    
+    // Sort each group
+    sortTasksByPriorityAndDueDate(todaysAndOverdueTasks);
+    sortTasksByPriorityAndDueDate(futureTasks);
+    
+    // Reassemble the list with today's and overdue tasks first
+    allTasks = [...todaysAndOverdueTasks, ...futureTasks];
     
     // Start scheduling at the provided date, starting at 9 AM if not specified
     if (currentDate.getHours() < 9) {
@@ -606,10 +639,7 @@ export class MemStorage implements IStorage {
     let extraTasksAdded = 0;
     
     if (prioritizeTodaysDue) {
-      // Get today's date with end of day time
-      const today = new Date(startDate);
-      today.setHours(23, 59, 59, 999);
-      
+      // We already have today's date from earlier
       // Check if all tasks due today have been scheduled
       const tasksNotScheduled = notScheduled.map(item => item.taskId);
       const todaysDueTasks = allTasks.filter(task => {
@@ -710,21 +740,8 @@ export class MemStorage implements IStorage {
     }
     
     // Process today's and overdue unscheduled tasks for warning message
-    const today = new Date(startDate);
-    today.setHours(23, 59, 59, 999);
-    
-    // Clear the redeclaration of now
     let todaysUnscheduledCount = 0;
-    let todaysDueTasksTime = 0;
     const unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[] = [];
-    
-    // Calculate total time needed for today's and overdue tasks
-    for (const task of allTasks) {
-      const assignment = assignmentsMap.get(task.assignmentId);
-      if (assignment && (new Date(assignment.dueDate) <= today || new Date(assignment.dueDate) < currentTime)) {
-        todaysDueTasksTime += task.timeAllocation;
-      }
-    }
     
     // Process unscheduled tasks that are due today or already overdue for warning purposes
     for (const item of notScheduled) {
