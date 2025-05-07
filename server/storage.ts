@@ -431,14 +431,40 @@ export class MemStorage implements IStorage {
     todaysUnscheduledCount: number;
     unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[];
   }> {
+    // Initialize result variables
     const result: ScheduleItem[] = [];
     const notScheduled: { taskId: number; assignmentId: number }[] = [];
-    let currentDate = new Date(startDate);
-    let totalTimeNeeded = 0;
     let scheduledTime = 0;
+    let extraTasksAdded = 0;
+    let todaysDueCompleted = false;
+    
+    // Set up scheduling dates
+    const scheduleStartDate = new Date(startDate);
+    // Current time for checking overdue assignments
+    const nowDate = new Date();
+    // Today's end of day for "due today" assignments
+    const endOfToday = new Date(startDate);
+    endOfToday.setHours(23, 59, 59, 999);
+    
+    // Start scheduling at 9 AM if earlier
+    if (scheduleStartDate.getHours() < 9) {
+      scheduleStartDate.setHours(9, 0, 0, 0);
+    }
+    
+    // Set up current time pointer for scheduling
+    let currentTimePointer = new Date(scheduleStartDate);
+    
+    // Calculate end time based on available minutes
+    let endTime = new Date(currentTimePointer);
+    if (availableMinutes) {
+      endTime.setMinutes(endTime.getMinutes() + availableMinutes);
+    } else {
+      // Default end time at 6 PM if no available minutes specified
+      endTime.setHours(18, 0, 0, 0);
+    }
     
     // Delete any existing schedule items for this date
-    const existingItems = await this.getScheduleForDate(currentDate);
+    const existingItems = await this.getScheduleForDate(scheduleStartDate);
     for (const item of existingItems) {
       await this.deleteScheduleItem(item.id);
     }
@@ -447,41 +473,31 @@ export class MemStorage implements IStorage {
     let allTasks: Task[] = [];
     const assignmentsMap = new Map<number, Assignment>();
     
+    // First, fetch all tasks and assignments
     for (const assignmentId of assignmentIds) {
       const tasks = await this.getTasksByAssignment(assignmentId);
       const incompleteTasks = tasks.filter(t => !t.completed);
       allTasks = [...allTasks, ...incompleteTasks];
       
-      // Calculate total time needed
-      totalTimeNeeded += incompleteTasks.reduce((sum, task) => sum + task.timeAllocation, 0);
-    }
-    
-    // Get assignment details for sorting
-    for (const assignmentId of assignmentIds) {
       const assignment = await this.getAssignment(assignmentId);
       if (assignment) {
         assignmentsMap.set(assignmentId, assignment);
       }
     }
     
-    // Get current time for overdue checking
-    const currentTime = new Date();
-    
-    // Get today's date with end of day time
-    const today = new Date(startDate);
-    today.setHours(23, 59, 59, 999);
-    
-    // Calculate time needed for today's and overdue tasks
-    let todaysDueTasksTime = 0;
+    // Separate tasks into today's/overdue vs future tasks
     const todaysAndOverdueTasks: Task[] = [];
     const futureTasks: Task[] = [];
+    let totalTimeNeeded = 0;
+    let todaysDueTasksTime = 0;
     
-    // First, separate today's/overdue tasks from future tasks
     for (const task of allTasks) {
       const assignment = assignmentsMap.get(task.assignmentId);
+      totalTimeNeeded += task.timeAllocation;
+      
       if (assignment) {
         const dueDate = new Date(assignment.dueDate);
-        if (dueDate <= today || dueDate < currentTime) {
+        if (dueDate <= endOfToday || dueDate < nowDate) {
           // Task is due today or overdue
           todaysDueTasksTime += task.timeAllocation;
           todaysAndOverdueTasks.push(task);
@@ -492,67 +508,64 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Sort both groups separately
-    const sortTasksByPriorityAndDueDate = (tasks: Task[]) => {
-      return tasks.sort((a, b) => {
-        const assignmentA = assignmentsMap.get(a.assignmentId);
-        const assignmentB = assignmentsMap.get(b.assignmentId);
-        
-        if (!assignmentA || !assignmentB) return 0;
-        
-        // For today's and overdue tasks, overdue comes first
-        if (tasks === todaysAndOverdueTasks) {
-          const aIsOverdue = new Date(assignmentA.dueDate) < currentTime;
-          const bIsOverdue = new Date(assignmentB.dueDate) < currentTime;
-          
-          if (aIsOverdue && !bIsOverdue) return -1;
-          if (!aIsOverdue && bIsOverdue) return 1;
-        }
-        
-        // Priority sorting
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        const priorityDiff = priorityOrder[assignmentA.priority as keyof typeof priorityOrder] - 
-                            priorityOrder[assignmentB.priority as keyof typeof priorityOrder];
-        
-        if (priorityDiff !== 0) return priorityDiff;
-        
-        // Due date sorting
-        return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
-      });
-    };
+    // Sort today's and overdue tasks by:
+    // 1. Overdue first
+    // 2. Priority (high, medium, low)
+    // 3. Due date (earliest first)
+    todaysAndOverdueTasks.sort((a, b) => {
+      const assignmentA = assignmentsMap.get(a.assignmentId);
+      const assignmentB = assignmentsMap.get(b.assignmentId);
+      
+      if (!assignmentA || !assignmentB) return 0;
+      
+      // Check if tasks are overdue
+      const aIsOverdue = new Date(assignmentA.dueDate) < nowDate;
+      const bIsOverdue = new Date(assignmentB.dueDate) < nowDate;
+      
+      // Overdue tasks come first
+      if (aIsOverdue && !bIsOverdue) return -1;
+      if (!aIsOverdue && bIsOverdue) return 1;
+      
+      // Then sort by priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const priorityDiff = 
+        priorityOrder[assignmentA.priority as keyof typeof priorityOrder] - 
+        priorityOrder[assignmentB.priority as keyof typeof priorityOrder];
+      
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Finally sort by due date
+      return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
+    });
     
-    // Sort each group
-    sortTasksByPriorityAndDueDate(todaysAndOverdueTasks);
-    sortTasksByPriorityAndDueDate(futureTasks);
+    // Sort future tasks similarly (by priority then due date)
+    futureTasks.sort((a, b) => {
+      const assignmentA = assignmentsMap.get(a.assignmentId);
+      const assignmentB = assignmentsMap.get(b.assignmentId);
+      
+      if (!assignmentA || !assignmentB) return 0;
+      
+      // Sort by priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const priorityDiff = 
+        priorityOrder[assignmentA.priority as keyof typeof priorityOrder] - 
+        priorityOrder[assignmentB.priority as keyof typeof priorityOrder];
+      
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Then sort by due date
+      return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
+    });
     
-    // Reassemble the list with today's and overdue tasks first
-    allTasks = [...todaysAndOverdueTasks, ...futureTasks];
+    // Combine the sorted task lists with today's/overdue tasks first
+    const orderedTasks = [...todaysAndOverdueTasks, ...futureTasks];
     
-    // Start scheduling at the provided date, starting at 9 AM if not specified
-    if (currentDate.getHours() < 9) {
-      currentDate.setHours(9, 0, 0, 0);
-    }
-    
-    // Calculate end time based on available minutes
-    let endTime = new Date(currentDate);
-    if (availableMinutes) {
-      endTime.setMinutes(endTime.getMinutes() + availableMinutes);
-    } else {
-      // Default end time at 6 PM if no available minutes specified
-      endTime.setHours(18, 0, 0, 0);
-    }
-    
-    // Schedule each task
-    for (const task of allTasks) {
-      // Check if we have enough time left
+    // Schedule tasks in order
+    for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // Skip if we don't have enough time to fit the task
-      const currentDateTime = currentDate.getTime();
-      const taskEndTime = new Date(currentDateTime + timeNeeded * 60000);
-      
+      // Skip if we don't have enough time left
       if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
-        // Not enough time left, add to not scheduled list
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -560,7 +573,8 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // If this task would end after our end time, add to not scheduled list
+      // Skip if task would end after our end time
+      const taskEndTime = new Date(currentTimePointer.getTime() + timeNeeded * 60000);
       if (taskEndTime.getTime() > endTime.getTime()) {
         notScheduled.push({
           taskId: task.id,
@@ -569,23 +583,18 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // Normal scheduling
-      const startTaskTime = new Date(currentDate);
-      const endTaskTime = new Date(currentDate);
-      endTaskTime.setMinutes(endTaskTime.getMinutes() + task.timeAllocation);
-      
-      // Check if we're crossing lunch time (12-1 PM)
+      // Check if task crosses lunch hour (12-1pm)
       if (
-        (startTaskTime.getHours() < 12 && endTaskTime.getHours() >= 12) ||
-        (startTaskTime.getHours() === 12 && startTaskTime.getMinutes() < 60)
+        (currentTimePointer.getHours() < 12 && taskEndTime.getHours() >= 12) ||
+        (currentTimePointer.getHours() === 12 && currentTimePointer.getMinutes() < 60)
       ) {
-        // Adjust for lunch break
-        currentDate.setHours(13, 0, 0, 0);
+        // Adjust for lunch break - move start time to 1pm
+        currentTimePointer.setHours(13, 0, 0, 0);
         
-        // If after lunch adjustment, the task doesn't fit in the available time
-        const newEndTime = new Date(currentDate);
-        newEndTime.setMinutes(newEndTime.getMinutes() + task.timeAllocation);
+        // Recalculate end time after lunch
+        taskEndTime.setTime(currentTimePointer.getTime() + timeNeeded * 60000);
         
+        // Skip if after adjustment it doesn't fit in available time
         if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
           notScheduled.push({
             taskId: task.id,
@@ -594,164 +603,75 @@ export class MemStorage implements IStorage {
           continue;
         }
         
-        // Create schedule item with adjusted time
-        const scheduleItem = await this.createScheduleItem({
-          taskId: task.id,
-          startTime: new Date(currentDate),
-          endTime: newEndTime,
-          completed: false
-        });
-        
-        result.push(scheduleItem);
-        scheduledTime += task.timeAllocation;
-        
-        // Move time forward
-        currentDate = new Date(newEndTime);
-      } else {
-        // Create normal schedule item
-        const scheduleItem = await this.createScheduleItem({
-          taskId: task.id,
-          startTime: startTaskTime,
-          endTime: endTaskTime,
-          completed: false
-        });
-        
-        result.push(scheduleItem);
-        scheduledTime += task.timeAllocation;
-        
-        // Move time forward
-        currentDate = new Date(endTaskTime);
+        // Skip if after adjustment it ends too late
+        if (taskEndTime.getTime() > endTime.getTime()) {
+          notScheduled.push({
+            taskId: task.id,
+            assignmentId: task.assignmentId
+          });
+          continue;
+        }
       }
       
-      // Add a 15-minute break after every 2 hours of work
+      // Create schedule item
+      const scheduleItem = await this.createScheduleItem({
+        taskId: task.id,
+        startTime: new Date(currentTimePointer),
+        endTime: new Date(taskEndTime),
+        completed: false
+      });
+      
+      // Add to results
+      result.push(scheduleItem);
+      scheduledTime += timeNeeded;
+      
+      // Move time pointer forward
+      currentTimePointer = new Date(taskEndTime);
+      
+      // Add a 15-minute break after every 2 tasks
       if (result.length % 3 === 0) {
-        currentDate.setMinutes(currentDate.getMinutes() + 15);
+        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
         
-        // If adding a break pushes us past available time, stop scheduling
+        // If break pushes past available time, stop scheduling
         if (availableMinutes && scheduledTime + 15 > availableMinutes) {
           break;
         }
       }
     }
     
-    // If prioritizing today's due tasks, handle rescheduling and scheduling additional tasks
-    let todaysDueCompleted = false;
-    let extraTasksAdded = 0;
+    // Check if all today's/overdue tasks were scheduled
+    const unscheduledTaskIds = notScheduled.map(item => item.taskId);
+    const unscheduledTodaysTasks = todaysAndOverdueTasks.filter(
+      task => unscheduledTaskIds.includes(task.id)
+    );
     
-    if (prioritizeTodaysDue) {
-      // We already have today's date from earlier
-      // Check if all tasks due today have been scheduled
-      const tasksNotScheduled = notScheduled.map(item => item.taskId);
-      const todaysDueTasks = allTasks.filter(task => {
-        const assignment = assignmentsMap.get(task.assignmentId);
-        // Include both tasks due today and tasks that are already overdue
-        return assignment && (
-          new Date(assignment.dueDate) <= today || // Due today
-          new Date(assignment.dueDate) < currentTime // Already overdue
-        );
-      });
-      
-      const unscheduledTodaysTasks = todaysDueTasks.filter(task => 
-        tasksNotScheduled.includes(task.id)
-      );
-      
-      todaysDueCompleted = unscheduledTodaysTasks.length === 0;
-      
-      // If we have time left and all today's tasks are scheduled, add future tasks
-      if (availableMinutes && todaysDueCompleted) {
-        const usedMinutes = scheduledTime;
-        const remainingMinutes = availableMinutes - usedMinutes;
-        
-        if (remainingMinutes > 0) {
-          // Get future tasks that weren't scheduled but could fit in remaining time
-          const possibleExtraTasks = notScheduled
-            .map(item => {
-              const task = allTasks.find(t => t.id === item.taskId);
-              if (!task) return null;
-              
-              const assignment = assignmentsMap.get(task.assignmentId);
-              if (!assignment) return null;
-              
-              // Only consider tasks not due today and not overdue
-              if (
-                new Date(assignment.dueDate) <= today || // Due today
-                new Date(assignment.dueDate) < currentTime // Already overdue
-              ) return null;
-              
-              return { 
-                task, 
-                assignment,
-                // Sort by priority then due date
-                priority: assignment.priority === 'high' ? 0 : 
-                          assignment.priority === 'medium' ? 1 : 2,
-                dueDate: assignment.dueDate.getTime()
-              };
-            })
-            .filter(item => item !== null)
-            // Sort by priority (high first) then due date (earlier first)
-            .sort((a, b) => {
-              if (a!.priority !== b!.priority) {
-                return a!.priority - b!.priority;
-              }
-              return a!.dueDate - b!.dueDate;
-            });
-          
-          // Try to schedule as many extra tasks as possible
-          let minutesRemaining = remainingMinutes;
-          let currentScheduleTime = new Date(currentDate);
-          
-          for (const extraItem of possibleExtraTasks) {
-            if (!extraItem) continue;
-            const { task } = extraItem;
-            
-            // If this task would fit in remaining time
-            if (task.timeAllocation <= minutesRemaining) {
-              // Create schedule item for this task
-              const startTaskTime = new Date(currentScheduleTime);
-              const endTaskTime = new Date(currentScheduleTime);
-              endTaskTime.setMinutes(endTaskTime.getMinutes() + task.timeAllocation);
-              
-              const scheduleItem = await this.createScheduleItem({
-                taskId: task.id,
-                startTime: startTaskTime,
-                endTime: endTaskTime,
-                completed: false
-              });
-              
-              result.push(scheduleItem);
-              minutesRemaining -= task.timeAllocation;
-              currentScheduleTime = new Date(endTaskTime);
-              extraTasksAdded++;
-              
-              // Add a small break between added tasks
-              if (minutesRemaining >= 10) {
-                currentScheduleTime.setMinutes(currentScheduleTime.getMinutes() + 10);
-                minutesRemaining -= 10;
-              }
-              
-              // Stop if we're out of meaningful time
-              if (minutesRemaining < 15) {
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
+    // All today's tasks are completed if none are in the unscheduled list
+    todaysDueCompleted = unscheduledTodaysTasks.length === 0;
     
-    // Process today's and overdue unscheduled tasks for warning message
+    // Count how many non-today tasks were scheduled
+    extraTasksAdded = result.filter(
+      item => !todaysAndOverdueTasks.some(task => task.id === item.taskId)
+    ).length;
+    
+    // Process today's unscheduled tasks for warning message
     let todaysUnscheduledCount = 0;
-    const unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[] = [];
+    const unscheduledTaskDetails: { 
+      id: number; 
+      description: string; 
+      assignmentTitle: string; 
+      timeAllocation: number 
+    }[] = [];
     
-    // Process unscheduled tasks that are due today or already overdue for warning purposes
+    // Add details for unscheduled tasks
     for (const item of notScheduled) {
       const task = allTasks.find(t => t.id === item.taskId);
       const assignment = assignmentsMap.get(item.assignmentId);
       
       if (task && assignment) {
         // Check if task is due today or overdue
-        const isDueToday = new Date(assignment.dueDate) <= today; 
-        const isOverdue = new Date(assignment.dueDate) < currentTime;
+        const dueDate = new Date(assignment.dueDate);
+        const isDueToday = dueDate <= endOfToday;
+        const isOverdue = dueDate < nowDate;
         
         if (isDueToday || isOverdue) {
           todaysUnscheduledCount++;
@@ -764,7 +684,7 @@ export class MemStorage implements IStorage {
             timeAllocation: task.timeAllocation
           });
         } else {
-          // For other future tasks, add them to the list but distinguish them
+          // For future tasks, add them with a label
           unscheduledTaskDetails.push({
             id: task.id,
             description: task.description,
@@ -775,9 +695,9 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Sort unscheduled tasks by time allocation (descending)
+    // Sort unscheduled tasks: today's/overdue first, then by time (largest first)
     unscheduledTaskDetails.sort((a, b) => {
-      // First sort by whether task is due today/overdue (non-future tasks first)
+      // First sort by whether task is due today/overdue
       const aIsFuture = a.assignmentTitle.endsWith("(future)");
       const bIsFuture = b.assignmentTitle.endsWith("(future)");
       
@@ -788,13 +708,14 @@ export class MemStorage implements IStorage {
       return b.timeAllocation - a.timeAllocation;
     });
     
+    // Return complete results
     return {
       scheduleItems: result,
       notScheduled,
       totalTasksTime: totalTimeNeeded,
       todaysDueTasksTime,
-      todaysDueCompleted: todaysDueCompleted || false,
-      extraTasksAdded: extraTasksAdded,
+      todaysDueCompleted,
+      extraTasksAdded,
       todaysUnscheduledCount,
       unscheduledTaskDetails
     };
