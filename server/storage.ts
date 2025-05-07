@@ -35,7 +35,11 @@ export interface IStorage {
   deleteScheduleItem(id: number): Promise<boolean>;
   
   // Helper methods for generating schedules
-  generateSchedule(assignmentIds: number[], startDate: Date): Promise<ScheduleItem[]>;
+  generateSchedule(assignmentIds: number[], startDate: Date, availableMinutes?: number): Promise<{
+    scheduleItems: ScheduleItem[];
+    notScheduled: { taskId: number; assignmentId: number }[];
+    totalTasksTime: number;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -400,19 +404,41 @@ export class MemStorage implements IStorage {
   }
   
   // Generate a schedule based on assignment tasks and constraints
-  async generateSchedule(assignmentIds: number[], startDate: Date): Promise<ScheduleItem[]> {
+  async generateSchedule(
+    assignmentIds: number[], 
+    startDate: Date, 
+    availableMinutes?: number
+  ): Promise<{
+    scheduleItems: ScheduleItem[];
+    notScheduled: { taskId: number; assignmentId: number }[];
+    totalTasksTime: number;
+  }> {
     const result: ScheduleItem[] = [];
-    const currentDate = new Date(startDate);
+    const notScheduled: { taskId: number; assignmentId: number }[] = [];
+    let currentDate = new Date(startDate);
+    let totalTimeNeeded = 0;
+    let scheduledTime = 0;
     
-    // Get all tasks for the given assignments
-    let allTasks: Task[] = [];
-    for (const assignmentId of assignmentIds) {
-      const tasks = await this.getTasksByAssignment(assignmentId);
-      allTasks = [...allTasks, ...tasks.filter(task => !task.completed)];
+    // Delete any existing schedule items for this date
+    const existingItems = await this.getScheduleForDate(currentDate);
+    for (const item of existingItems) {
+      await this.deleteScheduleItem(item.id);
     }
     
-    // Sort tasks by assignment priority and due date
+    // Get all incomplete tasks for the assignments
+    let allTasks: Task[] = [];
     const assignmentsMap = new Map<number, Assignment>();
+    
+    for (const assignmentId of assignmentIds) {
+      const tasks = await this.getTasksByAssignment(assignmentId);
+      const incompleteTasks = tasks.filter(t => !t.completed);
+      allTasks = [...allTasks, ...incompleteTasks];
+      
+      // Calculate total time needed
+      totalTimeNeeded += incompleteTasks.reduce((sum, task) => sum + task.timeAllocation, 0);
+    }
+    
+    // Get assignment details for sorting
     for (const assignmentId of assignmentIds) {
       const assignment = await this.getAssignment(assignmentId);
       if (assignment) {
@@ -440,65 +466,117 @@ export class MemStorage implements IStorage {
       return assignmentA.dueDate.getTime() - assignmentB.dueDate.getTime();
     });
     
-    // Start scheduling at the provided date, starting at 9 AM
-    currentDate.setHours(9, 0, 0, 0);
+    // Start scheduling at the provided date, starting at 9 AM if not specified
+    if (currentDate.getHours() < 9) {
+      currentDate.setHours(9, 0, 0, 0);
+    }
+    
+    // Calculate end time based on available minutes
+    let endTime = new Date(currentDate);
+    if (availableMinutes) {
+      endTime.setMinutes(endTime.getMinutes() + availableMinutes);
+    } else {
+      // Default end time at 6 PM if no available minutes specified
+      endTime.setHours(18, 0, 0, 0);
+    }
     
     // Schedule each task
     for (const task of allTasks) {
-      // Create a schedule item
-      const startTime = new Date(currentDate);
-      const endTime = new Date(currentDate);
-      endTime.setMinutes(endTime.getMinutes() + task.timeAllocation);
+      // Check if we have enough time left
+      const timeNeeded = task.timeAllocation;
       
-      // Add a break if working for too long (after 2 hours)
-      if (currentDate.getHours() >= 11 && currentDate.getHours() < 13) {
-        // Add lunch break
+      // Skip if we don't have enough time to fit the task
+      const currentDateTime = currentDate.getTime();
+      const taskEndTime = new Date(currentDateTime + timeNeeded * 60000);
+      
+      if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
+        // Not enough time left, add to not scheduled list
+        notScheduled.push({
+          taskId: task.id,
+          assignmentId: task.assignmentId
+        });
+        continue;
+      }
+      
+      // If this task would end after our end time, add to not scheduled list
+      if (taskEndTime.getTime() > endTime.getTime()) {
+        notScheduled.push({
+          taskId: task.id,
+          assignmentId: task.assignmentId
+        });
+        continue;
+      }
+      
+      // Normal scheduling
+      const startTaskTime = new Date(currentDate);
+      const endTaskTime = new Date(currentDate);
+      endTaskTime.setMinutes(endTaskTime.getMinutes() + task.timeAllocation);
+      
+      // Check if we're crossing lunch time (12-1 PM)
+      if (
+        (startTaskTime.getHours() < 12 && endTaskTime.getHours() >= 12) ||
+        (startTaskTime.getHours() === 12 && startTaskTime.getMinutes() < 60)
+      ) {
+        // Adjust for lunch break
         currentDate.setHours(13, 0, 0, 0);
         
-        // Reset start and end time
-        const newStartTime = new Date(currentDate);
+        // If after lunch adjustment, the task doesn't fit in the available time
         const newEndTime = new Date(currentDate);
         newEndTime.setMinutes(newEndTime.getMinutes() + task.timeAllocation);
         
+        if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
+          notScheduled.push({
+            taskId: task.id,
+            assignmentId: task.assignmentId
+          });
+          continue;
+        }
+        
+        // Create schedule item with adjusted time
         const scheduleItem = await this.createScheduleItem({
           taskId: task.id,
-          startTime: newStartTime,
+          startTime: new Date(currentDate),
           endTime: newEndTime,
           completed: false
         });
         
         result.push(scheduleItem);
+        scheduledTime += task.timeAllocation;
         
         // Move time forward
-        currentDate.setTime(newEndTime.getTime());
+        currentDate = new Date(newEndTime);
       } else {
-        // Normal scheduling
+        // Create normal schedule item
         const scheduleItem = await this.createScheduleItem({
           taskId: task.id,
-          startTime,
-          endTime,
+          startTime: startTaskTime,
+          endTime: endTaskTime,
           completed: false
         });
         
         result.push(scheduleItem);
+        scheduledTime += task.timeAllocation;
         
         // Move time forward
-        currentDate.setTime(endTime.getTime());
+        currentDate = new Date(endTaskTime);
       }
       
       // Add a 15-minute break after every 2 hours of work
       if (result.length % 3 === 0) {
         currentDate.setMinutes(currentDate.getMinutes() + 15);
-      }
-      
-      // If we reach the end of the day (6pm), move to the next day
-      if (currentDate.getHours() >= 18) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        currentDate.setHours(9, 0, 0, 0);
+        
+        // If adding a break pushes us past available time, stop scheduling
+        if (availableMinutes && scheduledTime + 15 > availableMinutes) {
+          break;
+        }
       }
     }
     
-    return result;
+    return {
+      scheduleItems: result,
+      notScheduled,
+      totalTasksTime: totalTimeNeeded
+    };
   }
 }
 
