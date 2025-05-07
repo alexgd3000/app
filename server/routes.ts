@@ -290,7 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalTasksTime: result.totalTasksTime,
         availableMinutes: minutes,
         todaysDueCompleted: result.todaysDueCompleted || false,
-        extraTasksAdded: result.extraTasksAdded || 0
+        extraTasksAdded: result.extraTasksAdded || 0,
+        todaysUnscheduledCount: result.todaysUnscheduledCount || 0
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

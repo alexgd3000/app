@@ -74,10 +74,15 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       return scheduleResponse.json();
     },
     onSuccess: (data) => {
+      // Get today's unscheduled tasks count (if provided)
+      const todaysTasksUnscheduled = data.todaysUnscheduledCount || 0;
+      
       // Save not scheduled tasks for display
       if (data.notScheduled && data.notScheduled.length > 0) {
         setNotScheduledTasks(data.notScheduled);
-        setShowWarning(true);
+        
+        // Only show warning if tasks due today couldn't be scheduled
+        setShowWarning(todaysTasksUnscheduled > 0);
       } else {
         setNotScheduledTasks([]);
         setShowWarning(false);
@@ -91,11 +96,17 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       onRefresh();
       
-      if (data.notScheduled && data.notScheduled.length > 0) {
+      // Generate appropriate messages
+      if (todaysTasksUnscheduled > 0) {
         toast({
           title: "Schedule generated with warnings",
-          description: `${data.notScheduled.length} tasks couldn't fit in your available time`,
+          description: `${todaysTasksUnscheduled} tasks due today couldn't fit in your available time`,
           variant: "destructive",
+        });
+      } else if (data.extraTasksAdded > 0) {
+        toast({
+          title: "Schedule generated successfully",
+          description: `All tasks due today were scheduled, plus ${data.extraTasksAdded} additional upcoming tasks`,
         });
       } else {
         toast({
@@ -225,7 +236,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
         </div>
       </CardHeader>
       
-      {showWarning && notScheduledTasks.length > 0 && (
+      {showWarning && (
         <div className="px-6 pt-4">
           <Alert className="bg-amber-50 border-amber-200">
             <AlertTitle className="text-amber-800 flex items-center">
@@ -233,12 +244,27 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               Time Constraint Warning
             </AlertTitle>
             <AlertDescription className="text-amber-700">
-              <p>Some tasks couldn't be scheduled due to your time constraints.</p>
+              <p>Some tasks <strong>due today</strong> couldn't be scheduled due to your time constraints.</p>
               <p className="mt-1 text-sm">
                 Total task time needed: <strong>{formatMinutesToHours(totalTasksTime)}</strong>, 
                 Available time: <strong>{getTotalMinutes() ? formatMinutesToHours(getTotalMinutes() || 0) : "Auto (9am-6pm)"}</strong>
               </p>
-              <p className="mt-3 mb-1 text-sm font-medium">Unscheduled tasks: {notScheduledTasks.length}</p>
+              <p className="mt-3 mb-1 text-sm font-medium">
+                {notScheduledTasks.length > 0 ? (
+                  <>
+                    <span className="text-red-600 font-medium">
+                      {data?.todaysUnscheduledCount || 0} tasks due today couldn't be scheduled
+                    </span>
+                    {data?.todaysUnscheduledCount !== notScheduledTasks.length && (
+                      <span className="ml-2">
+                        ({notScheduledTasks.length - (data?.todaysUnscheduledCount || 0)} future tasks also not scheduled)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  "No tasks were scheduled"
+                )}
+              </p>
             </AlertDescription>
           </Alert>
         </div>

@@ -427,6 +427,7 @@ export class MemStorage implements IStorage {
     totalTasksTime: number;
     todaysDueCompleted: boolean;
     extraTasksAdded: number;
+    todaysUnscheduledCount: number;
   }> {
     const result: ScheduleItem[] = [];
     const notScheduled: { taskId: number; assignmentId: number }[] = [];
@@ -587,10 +588,128 @@ export class MemStorage implements IStorage {
       }
     }
     
+    // If prioritizing today's due tasks, handle rescheduling and scheduling additional tasks
+    let todaysDueCompleted = false;
+    let extraTasksAdded = 0;
+    
+    if (prioritizeTodaysDue) {
+      // Get today's date with end of day time
+      const today = new Date(startDate);
+      today.setHours(23, 59, 59, 999);
+      
+      // Check if all tasks due today have been scheduled
+      const tasksNotScheduled = notScheduled.map(item => item.taskId);
+      const todaysDueTasks = allTasks.filter(task => {
+        const assignment = assignmentsMap.get(task.assignmentId);
+        return assignment && new Date(assignment.dueDate) <= today;
+      });
+      
+      const unscheduledTodaysTasks = todaysDueTasks.filter(task => 
+        tasksNotScheduled.includes(task.id)
+      );
+      
+      todaysDueCompleted = unscheduledTodaysTasks.length === 0;
+      
+      // If we have time left and all today's tasks are scheduled, add future tasks
+      if (availableMinutes && todaysDueCompleted) {
+        const usedMinutes = scheduledTime;
+        const remainingMinutes = availableMinutes - usedMinutes;
+        
+        if (remainingMinutes > 0) {
+          // Get future tasks that weren't scheduled but could fit in remaining time
+          const possibleExtraTasks = notScheduled
+            .map(item => {
+              const task = allTasks.find(t => t.id === item.taskId);
+              if (!task) return null;
+              
+              const assignment = assignmentsMap.get(task.assignmentId);
+              if (!assignment) return null;
+              
+              // Only consider tasks not due today
+              if (new Date(assignment.dueDate) <= today) return null;
+              
+              return { 
+                task, 
+                assignment,
+                // Sort by priority then due date
+                priority: assignment.priority === 'high' ? 0 : 
+                          assignment.priority === 'medium' ? 1 : 2,
+                dueDate: assignment.dueDate.getTime()
+              };
+            })
+            .filter(item => item !== null)
+            // Sort by priority (high first) then due date (earlier first)
+            .sort((a, b) => {
+              if (a!.priority !== b!.priority) {
+                return a!.priority - b!.priority;
+              }
+              return a!.dueDate - b!.dueDate;
+            });
+          
+          // Try to schedule as many extra tasks as possible
+          let minutesRemaining = remainingMinutes;
+          let currentTime = new Date(currentDate);
+          
+          for (const extraItem of possibleExtraTasks) {
+            if (!extraItem) continue;
+            const { task } = extraItem;
+            
+            // If this task would fit in remaining time
+            if (task.timeAllocation <= minutesRemaining) {
+              // Create schedule item for this task
+              const startTaskTime = new Date(currentTime);
+              const endTaskTime = new Date(currentTime);
+              endTaskTime.setMinutes(endTaskTime.getMinutes() + task.timeAllocation);
+              
+              const scheduleItem = await this.createScheduleItem({
+                taskId: task.id,
+                startTime: startTaskTime,
+                endTime: endTaskTime,
+                completed: false
+              });
+              
+              result.push(scheduleItem);
+              minutesRemaining -= task.timeAllocation;
+              currentTime = new Date(endTaskTime);
+              extraTasksAdded++;
+              
+              // Add a small break between added tasks
+              if (minutesRemaining >= 10) {
+                currentTime.setMinutes(currentTime.getMinutes() + 10);
+                minutesRemaining -= 10;
+              }
+              
+              // Stop if we're out of meaningful time
+              if (minutesRemaining < 15) {
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Count today's unscheduled tasks for warning message
+    const today = new Date(startDate);
+    today.setHours(23, 59, 59, 999);
+    
+    let todaysUnscheduledCount = 0;
+    
+    // Only count tasks not scheduled that are due today for warning purposes
+    for (const item of notScheduled) {
+      const assignment = assignmentsMap.get(item.assignmentId);
+      if (assignment && new Date(assignment.dueDate) <= today) {
+        todaysUnscheduledCount++;
+      }
+    }
+    
     return {
       scheduleItems: result,
       notScheduled,
-      totalTasksTime: totalTimeNeeded
+      totalTasksTime: totalTimeNeeded,
+      todaysDueCompleted: todaysDueCompleted || false,
+      extraTasksAdded: extraTasksAdded,
+      todaysUnscheduledCount
     };
   }
 }
