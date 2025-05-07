@@ -763,12 +763,30 @@ export class MemStorage implements IStorage {
             assignmentTitle: assignment.title,
             timeAllocation: task.timeAllocation
           });
+        } else {
+          // For other future tasks, add them to the list but distinguish them
+          unscheduledTaskDetails.push({
+            id: task.id,
+            description: task.description,
+            assignmentTitle: assignment.title + " (future)",
+            timeAllocation: task.timeAllocation
+          });
         }
       }
     }
     
     // Sort unscheduled tasks by time allocation (descending)
-    unscheduledTaskDetails.sort((a, b) => b.timeAllocation - a.timeAllocation);
+    unscheduledTaskDetails.sort((a, b) => {
+      // First sort by whether task is due today/overdue (non-future tasks first)
+      const aIsFuture = a.assignmentTitle.endsWith("(future)");
+      const bIsFuture = b.assignmentTitle.endsWith("(future)");
+      
+      if (!aIsFuture && bIsFuture) return -1;
+      if (aIsFuture && !bIsFuture) return 1;
+      
+      // Then sort by time allocation (descending)
+      return b.timeAllocation - a.timeAllocation;
+    });
     
     return {
       scheduleItems: result,

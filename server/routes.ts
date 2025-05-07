@@ -288,10 +288,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduleItems: expandedItems,
         notScheduled: result.notScheduled,
         totalTasksTime: result.totalTasksTime,
+        todaysDueTasksTime: result.todaysDueTasksTime || 0,
         availableMinutes: minutes,
         todaysDueCompleted: result.todaysDueCompleted || false,
         extraTasksAdded: result.extraTasksAdded || 0,
-        todaysUnscheduledCount: result.todaysUnscheduledCount || 0
+        todaysUnscheduledCount: result.todaysUnscheduledCount || 0,
+        unscheduledTaskDetails: result.unscheduledTaskDetails || []
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
