@@ -6,10 +6,12 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Pencil } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import TaskItem from "@/components/TaskItem";
 import TimerDisplay from "@/components/TimerDisplay";
 import AddTaskForm from "@/components/AddTaskForm";
+import EditAssignmentDialog from "@/components/EditAssignmentDialog";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,6 +24,7 @@ interface AssignmentCardProps {
 
 export default function AssignmentCard({ assignment, isActive, viewMode, onRefresh }: AssignmentCardProps) {
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
   
   const { data: tasks = [], refetch: refetchTasks } = useQuery<Task[]>({
@@ -124,57 +127,77 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
 
   if (viewMode === "list") {
     return (
-      <Card className="mb-4 overflow-hidden">
-        <div className="flex flex-col md:flex-row">
-          <div className="p-4 md:w-1/3 border-b md:border-b-0 md:border-r border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">{assignment.title}</h2>
-                <p className="text-sm text-gray-500">{assignment.course}</p>
-              </div>
-              <div>{getPriorityBadge(assignment.priority)}</div>
-            </div>
-            
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-sm text-gray-500">
-                <i className="ri-calendar-line mr-1"></i>
-                <span>Due {formattedDueDate}</span>
+      <>
+        <Card className="mb-4 overflow-hidden">
+          <div className="flex flex-col md:flex-row">
+            <div className="p-4 md:w-1/3 border-b md:border-b-0 md:border-r border-gray-200">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{assignment.title}</h2>
+                  <p className="text-sm text-gray-500">{assignment.course}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => setShowEditDialog(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {getPriorityBadge(assignment.priority)}
+                </div>
               </div>
               
-              <div className="flex items-center text-sm text-gray-500">
-                <i className="ri-time-line mr-1"></i>
-                <span>Est: {formatTime(assignment.estimatedTime)}</span>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center text-sm text-gray-500">
+                  <i className="ri-calendar-line mr-1"></i>
+                  <span>Due {formattedDueDate}</span>
+                </div>
+                
+                <div className="flex items-center text-sm text-gray-500">
+                  <i className="ri-time-line mr-1"></i>
+                  <span>Est: {formatTime(assignment.estimatedTime)}</span>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <div className="flex items-center">
+                  <Progress value={progress} className="h-2" />
+                  <span className="ml-2 text-sm font-medium text-gray-700">{progress}%</span>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {completedTasks} of {totalTasks} tasks · {formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}
+                </div>
               </div>
             </div>
             
-            <div className="mt-4">
-              <div className="flex items-center">
-                <Progress value={progress} className="h-2" />
-                <span className="ml-2 text-sm font-medium text-gray-700">{progress}%</span>
-              </div>
-              <div className="mt-1 text-xs text-gray-500">
-                {completedTasks} of {totalTasks} tasks · {formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}
+            <div className="p-4 md:w-2/3">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Task Breakdown</h3>
+              <div className="space-y-2">
+                {tasks.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    isActive={task.id === activeTaskId}
+                    onUpdate={handleTaskUpdate}
+                  />
+                ))}
+                
+                <AddTaskForm assignmentId={assignment.id} onTaskCreated={handleTaskCreated} />
               </div>
             </div>
           </div>
-          
-          <div className="p-4 md:w-2/3">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Task Breakdown</h3>
-            <div className="space-y-2">
-              {tasks.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  isActive={task.id === activeTaskId}
-                  onUpdate={handleTaskUpdate}
-                />
-              ))}
-              
-              <AddTaskForm assignmentId={assignment.id} onTaskCreated={handleTaskCreated} />
-            </div>
-          </div>
-        </div>
-      </Card>
+        </Card>
+        
+        {/* Edit Assignment Dialog */}
+        <EditAssignmentDialog 
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          assignment={assignment}
+          onAssignmentUpdated={onRefresh}
+        />
+      </>
     );
   }
   
@@ -195,7 +218,17 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
             <h2 className="text-lg font-semibold text-gray-900">{assignment.title}</h2>
             <p className="text-sm text-gray-500">{assignment.course}</p>
           </div>
-          <div>{getPriorityBadge(assignment.priority)}</div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setShowEditDialog(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {getPriorityBadge(assignment.priority)}
+          </div>
         </div>
         
         <div className="mt-4 flex items-center justify-between">
@@ -210,6 +243,14 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
           </div>
         </div>
       </CardHeader>
+      
+      {/* Edit Assignment Dialog */}
+      <EditAssignmentDialog 
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        assignment={assignment}
+        onAssignmentUpdated={onRefresh}
+      />
       
       {/* Timer Display for active assignment */}
       {isActive && activeTask && (
