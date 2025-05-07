@@ -698,7 +698,7 @@ export class MemStorage implements IStorage {
           
           // Try to schedule as many extra tasks as possible
           let minutesRemaining = remainingMinutes;
-          let currentTime = new Date(currentDate);
+          let currentScheduleTime = new Date(currentDate);
           
           for (const extraItem of possibleExtraTasks) {
             if (!extraItem) continue;
@@ -707,8 +707,8 @@ export class MemStorage implements IStorage {
             // If this task would fit in remaining time
             if (task.timeAllocation <= minutesRemaining) {
               // Create schedule item for this task
-              const startTaskTime = new Date(currentTime);
-              const endTaskTime = new Date(currentTime);
+              const startTaskTime = new Date(currentScheduleTime);
+              const endTaskTime = new Date(currentScheduleTime);
               endTaskTime.setMinutes(endTaskTime.getMinutes() + task.timeAllocation);
               
               const scheduleItem = await this.createScheduleItem({
@@ -720,12 +720,12 @@ export class MemStorage implements IStorage {
               
               result.push(scheduleItem);
               minutesRemaining -= task.timeAllocation;
-              currentTime = new Date(endTaskTime);
+              currentScheduleTime = new Date(endTaskTime);
               extraTasksAdded++;
               
               // Add a small break between added tasks
               if (minutesRemaining >= 10) {
-                currentTime.setMinutes(currentTime.getMinutes() + 10);
+                currentScheduleTime.setMinutes(currentScheduleTime.getMinutes() + 10);
                 minutesRemaining -= 10;
               }
               
