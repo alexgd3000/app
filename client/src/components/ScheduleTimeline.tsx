@@ -100,7 +100,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       if (todaysTasksUnscheduled > 0) {
         toast({
           title: "Schedule generated with warnings",
-          description: `${todaysTasksUnscheduled} tasks due today couldn't fit in your available time`,
+          description: `${todaysTasksUnscheduled} tasks due today or overdue couldn't fit in your available time`,
           variant: "destructive",
         });
       } else if (data.extraTasksAdded > 0) {
@@ -244,7 +244,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               Time Constraint Warning
             </AlertTitle>
             <AlertDescription className="text-amber-700">
-              <p>Some tasks <strong>due today</strong> couldn't be scheduled due to your time constraints.</p>
+              <p>Some tasks <strong>due today or overdue</strong> couldn't be scheduled due to your time constraints.</p>
               <p className="mt-1 text-sm">
                 Total task time needed: <strong>{formatMinutesToHours(totalTasksTime)}</strong>, 
                 Available time: <strong>{getTotalMinutes() ? formatMinutesToHours(getTotalMinutes() || 0) : "Auto (9am-6pm)"}</strong>
@@ -253,7 +253,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 {notScheduledTasks.length > 0 ? (
                   <>
                     <span className="text-red-600 font-medium">
-                      {generateScheduleMutation.data?.todaysUnscheduledCount || 0} tasks due today couldn't be scheduled
+                      {generateScheduleMutation.data?.todaysUnscheduledCount || 0} tasks due today or overdue couldn't be scheduled
                     </span>
                     {generateScheduleMutation.data?.todaysUnscheduledCount !== notScheduledTasks.length && (
                       <span className="ml-2">

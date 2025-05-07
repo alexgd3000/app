@@ -420,7 +420,7 @@ export class MemStorage implements IStorage {
     assignmentIds: number[], 
     startDate: Date, 
     availableMinutes?: number,
-    prioritizeTodaysDue: boolean = false
+    prioritizeTodaysDue: boolean = true // Default to prioritizing today's due tasks
   ): Promise<{
     scheduleItems: ScheduleItem[];
     notScheduled: { taskId: number; assignmentId: number }[];
@@ -462,14 +462,24 @@ export class MemStorage implements IStorage {
       }
     }
     
+    const now = new Date();
+    
     // Sort tasks:
-    // 1. First by assignment priority (high > medium > low)
-    // 2. Then by due date (closest first)
+    // 1. First by overdue status (overdue assignments first)
+    // 2. Then by assignment priority (high > medium > low)
+    // 3. Finally by due date (closest first)
     allTasks.sort((a, b) => {
       const assignmentA = assignmentsMap.get(a.assignmentId);
       const assignmentB = assignmentsMap.get(b.assignmentId);
       
       if (!assignmentA || !assignmentB) return 0;
+      
+      // Overdue status - overdue assignments get highest priority
+      const aIsOverdue = new Date(assignmentA.dueDate) < now;
+      const bIsOverdue = new Date(assignmentB.dueDate) < now;
+      
+      if (aIsOverdue && !bIsOverdue) return -1; // A is overdue, B is not, so A comes first
+      if (!aIsOverdue && bIsOverdue) return 1;  // B is overdue, A is not, so B comes first
       
       // Priority sorting
       const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -599,9 +609,14 @@ export class MemStorage implements IStorage {
       
       // Check if all tasks due today have been scheduled
       const tasksNotScheduled = notScheduled.map(item => item.taskId);
+      const now = new Date();
       const todaysDueTasks = allTasks.filter(task => {
         const assignment = assignmentsMap.get(task.assignmentId);
-        return assignment && new Date(assignment.dueDate) <= today;
+        // Include both tasks due today and tasks that are already overdue
+        return assignment && (
+          new Date(assignment.dueDate) <= today || // Due today
+          new Date(assignment.dueDate) < now       // Already overdue
+        );
       });
       
       const unscheduledTodaysTasks = todaysDueTasks.filter(task => 
@@ -625,8 +640,11 @@ export class MemStorage implements IStorage {
               const assignment = assignmentsMap.get(task.assignmentId);
               if (!assignment) return null;
               
-              // Only consider tasks not due today
-              if (new Date(assignment.dueDate) <= today) return null;
+              // Only consider tasks not due today and not overdue
+              if (
+                new Date(assignment.dueDate) <= today || // Due today
+                new Date(assignment.dueDate) < now       // Already overdue
+              ) return null;
               
               return { 
                 task, 
