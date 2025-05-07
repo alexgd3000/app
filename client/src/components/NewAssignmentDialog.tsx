@@ -236,25 +236,7 @@ export default function NewAssignmentDialog({ open, onOpenChange, onAssignmentCr
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="timeAvailable"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-3">
-                      <FormLabel>Time Available (hours)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g. 4" 
-                          min={0.5}
-                          step={0.5}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
               </div>
               
               <DialogFooter>
