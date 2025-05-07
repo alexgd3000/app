@@ -41,7 +41,7 @@ const assignmentFormSchema = z.object({
   description: z.string().optional(),
   dueDate: z.string().min(1, "Due date is required"),
   priority: z.enum(["high", "medium", "low"]),
-  estimatedTime: z.coerce.number().min(0.5, "Estimated time must be at least 0.5 hours"),
+  estimatedTime: z.coerce.number().default(0), // Default to 0, will be calculated based on tasks
 });
 
 type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
@@ -60,7 +60,7 @@ export default function NewAssignmentDialog({ open, onOpenChange, onAssignmentCr
       description: "",
       dueDate: format(new Date(), "yyyy-MM-dd"),
       priority: "medium",
-      estimatedTime: 1,
+      estimatedTime: 0,
     },
   });
   
@@ -216,25 +216,6 @@ export default function NewAssignmentDialog({ open, onOpenChange, onAssignmentCr
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="estimatedTime"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-3">
-                      <FormLabel>Estimated Time (hours)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g. 2.5" 
-                          min={0.5}
-                          step={0.5}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 
 
               </div>

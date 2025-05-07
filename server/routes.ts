@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert string time values to minutes
       const body = {
         ...req.body,
-        estimatedTime: Math.round(parseFloat(req.body.estimatedTime) * 60),
+        estimatedTime: Math.round(parseFloat(req.body.estimatedTime)), // Store as-is, no conversion
         timeAvailable: 120, // Default value of 2 hours
         dueDate: new Date(req.body.dueDate)
       };
@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Format time data if present
       let body = req.body;
       if (body.estimatedTime !== undefined) {
-        body.estimatedTime = Math.round(parseFloat(body.estimatedTime) * 60);
+        body.estimatedTime = Math.round(parseFloat(body.estimatedTime));
       }
       if (body.timeAvailable !== undefined) {
         body.timeAvailable = Math.round(parseFloat(body.timeAvailable) * 60);
@@ -119,14 +119,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
-      // Convert timeAllocation to minutes if needed
+      // Convert timeAllocation to minutes
       const body = {
         ...req.body,
-        timeAllocation: Math.round(parseFloat(req.body.timeAllocation) * 60)
+        timeAllocation: Math.round(parseFloat(req.body.timeAllocation))
       };
       
       const validatedData = insertTaskSchema.parse(body);
       const task = await storage.createTask(validatedData);
+      
+      // Update the assignment's estimated time to be the sum of all tasks
+      const allTasks = await storage.getTasksByAssignment(task.assignmentId);
+      const totalTime = allTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
+      
+      await storage.updateAssignment(task.assignmentId, {
+        estimatedTime: totalTime
+      });
+      
       return res.status(201).json(task);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
@@ -150,6 +159,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updated) {
         return res.status(404).json({ message: "Task not found" });
       }
+      
+      // Update the assignment's estimated time
+      const allTasks = await storage.getTasksByAssignment(updated.assignmentId);
+      const totalTime = allTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
+      
+      await storage.updateAssignment(updated.assignmentId, {
+        estimatedTime: totalTime
+      });
+      
       return res.json(updated);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
@@ -173,10 +191,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
+      
+      // Get the task before deleting to know its assignment
+      const task = await storage.getTask(id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      const assignmentId = task.assignmentId;
       const success = await storage.deleteTask(id);
+      
       if (!success) {
         return res.status(404).json({ message: "Task not found" });
       }
+      
+      // Update the assignment's estimated time
+      const remainingTasks = await storage.getTasksByAssignment(assignmentId);
+      const totalTime = remainingTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
+      
+      await storage.updateAssignment(assignmentId, {
+        estimatedTime: totalTime
+      });
+      
       return res.json({ message: "Task deleted successfully" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
