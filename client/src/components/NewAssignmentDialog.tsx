@@ -42,7 +42,6 @@ const assignmentFormSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
   priority: z.enum(["high", "medium", "low"]),
   estimatedTime: z.coerce.number().min(0.5, "Estimated time must be at least 0.5 hours"),
-  timeAvailable: z.coerce.number().min(0.5, "Time available must be at least 0.5 hours"),
 });
 
 type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
@@ -62,7 +61,6 @@ export default function NewAssignmentDialog({ open, onOpenChange, onAssignmentCr
       dueDate: format(new Date(), "yyyy-MM-dd"),
       priority: "medium",
       estimatedTime: 1,
-      timeAvailable: 2,
     },
   });
   

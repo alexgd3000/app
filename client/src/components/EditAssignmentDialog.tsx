@@ -81,7 +81,6 @@ export default function EditAssignmentDialog({
           dueDate: new Date(assignment.dueDate),
           priority: assignment.priority as z.infer<typeof PriorityEnum>,
           estimatedTime: assignment.estimatedTime,
-          timeAvailable: assignment.timeAvailable,
         }
       : {
           id: 0,
@@ -91,7 +90,6 @@ export default function EditAssignmentDialog({
           dueDate: new Date(),
           priority: "medium",
           estimatedTime: 120,
-          timeAvailable: 90,
         },
   });
 
@@ -106,7 +104,6 @@ export default function EditAssignmentDialog({
         dueDate: new Date(assignment.dueDate),
         priority: assignment.priority as z.infer<typeof PriorityEnum>,
         estimatedTime: assignment.estimatedTime,
-        timeAvailable: assignment.timeAvailable,
       });
     }
   });
@@ -318,41 +315,22 @@ export default function EditAssignmentDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="estimatedTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estimated Time (minutes)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Total time needed for this assignment
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="timeAvailable"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Available Time (minutes)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      How much time you can dedicate to this assignment
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="estimatedTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estimated Time (minutes)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={1} {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Total time needed for this assignment
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter className="flex justify-between !mt-8">
               <div>
