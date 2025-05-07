@@ -116,11 +116,39 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
     onRefresh();
   };
 
-  // Format due date
+  // Format due date with precise hours and minutes for near-term deadlines
   const dueDate = new Date(assignment.dueDate);
-  const formattedDueDate = dueDate.getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000 
-    ? formatDistanceToNow(dueDate, { addSuffix: true })
-    : format(dueDate, 'MMM d, yyyy');
+  const now = new Date();
+  const diffMs = dueDate.getTime() - now.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  let formattedDueDate;
+  if (diffHours < 0) {
+    // Past due
+    if (diffHours > -24) {
+      // Less than 24 hours ago
+      const hours = Math.abs(Math.floor(diffHours));
+      const minutes = Math.abs(Math.floor((diffHours - Math.floor(diffHours)) * 60));
+      formattedDueDate = hours > 0 
+        ? `${hours}h ${minutes > 0 ? minutes + 'm' : ''} overdue`
+        : `${minutes}m overdue`;
+    } else {
+      formattedDueDate = formatDistanceToNow(dueDate, { addSuffix: true });
+    }
+  } else if (diffHours < 24) {
+    // Due within 24 hours
+    const hours = Math.floor(diffHours);
+    const minutes = Math.floor((diffHours - hours) * 60);
+    formattedDueDate = hours > 0 
+      ? `due in ${hours}h ${minutes > 0 ? minutes + 'm' : ''}`
+      : `due in ${minutes}m`;
+  } else if (diffHours < 7 * 24) {
+    // Due within a week
+    formattedDueDate = `due in ${Math.floor(diffHours / 24)} days`;
+  } else {
+    // Due in more than a week
+    formattedDueDate = format(dueDate, 'MMM d, yyyy');
+  }
 
   // Find the active task object
   const activeTask = tasks.find(task => task.id === activeTaskId);

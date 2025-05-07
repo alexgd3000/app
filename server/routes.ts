@@ -251,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/schedule/generate", async (req: Request, res: Response) => {
     try {
-      const { assignmentIds, startDate, availableMinutes } = req.body;
+      const { assignmentIds, startDate, availableMinutes, prioritizeTodaysDue } = req.body;
       
       if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
         return res.status(400).json({ message: "Assignment IDs must be a non-empty array" });
@@ -265,7 +265,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert availableMinutes to a number if it exists
       const minutes = availableMinutes ? Number(availableMinutes) : undefined;
       
-      const result = await storage.generateSchedule(assignmentIds, date, minutes);
+      const result = await storage.generateSchedule(
+        assignmentIds, 
+        date, 
+        minutes,
+        prioritizeTodaysDue === true // Pass the prioritization flag
+      );
       
       // Expand schedule items to include task and assignment details
       const expandedItems = await Promise.all(
@@ -283,7 +288,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduleItems: expandedItems,
         notScheduled: result.notScheduled,
         totalTasksTime: result.totalTasksTime,
-        availableMinutes: minutes
+        availableMinutes: minutes,
+        todaysDueCompleted: result.todaysDueCompleted || false,
+        extraTasksAdded: result.extraTasksAdded || 0
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

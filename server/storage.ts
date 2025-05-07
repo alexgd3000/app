@@ -419,11 +419,14 @@ export class MemStorage implements IStorage {
   async generateSchedule(
     assignmentIds: number[], 
     startDate: Date, 
-    availableMinutes?: number
+    availableMinutes?: number,
+    prioritizeTodaysDue: boolean = false
   ): Promise<{
     scheduleItems: ScheduleItem[];
     notScheduled: { taskId: number; assignmentId: number }[];
     totalTasksTime: number;
+    todaysDueCompleted: boolean;
+    extraTasksAdded: number;
   }> {
     const result: ScheduleItem[] = [];
     const notScheduled: { taskId: number; assignmentId: number }[] = [];
