@@ -23,6 +23,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const [availableMinutes, setAvailableMinutes] = useState<string>('');
   const [notScheduledTasks, setNotScheduledTasks] = useState<{ taskId: number; assignmentId: number }[]>([]);
   const [totalTasksTime, setTotalTasksTime] = useState<number>(0);
+  const [todaysDueTasksTime, setTodaysDueTasksTime] = useState<number>(0);
+  const [unscheduledTaskDetails, setUnscheduledTaskDetails] = useState<{ id: number; description: string; assignmentTitle: string; timeAllocation: number }[]>([]);
   const [showWarning, setShowWarning] = useState<boolean>(false);
   
   // Calculate total minutes from hours and minutes inputs
@@ -91,6 +93,16 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       // Save total tasks time
       if (data.totalTasksTime) {
         setTotalTasksTime(data.totalTasksTime);
+      }
+      
+      // Save time needed for today's and overdue tasks
+      if (data.todaysDueTasksTime) {
+        setTodaysDueTasksTime(data.todaysDueTasksTime);
+      }
+      
+      // Save unscheduled task details
+      if (data.unscheduledTaskDetails) {
+        setUnscheduledTaskDetails(data.unscheduledTaskDetails);
       }
       
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
@@ -246,7 +258,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <AlertDescription className="text-amber-700">
               <p>Some tasks <strong>due today or overdue</strong> couldn't be scheduled due to your time constraints.</p>
               <p className="mt-1 text-sm">
-                Total task time needed: <strong>{formatMinutesToHours(totalTasksTime)}</strong>, 
+                Today's tasks time needed: <strong>{formatMinutesToHours(todaysDueTasksTime)}</strong>, 
                 Available time: <strong>{getTotalMinutes() ? formatMinutesToHours(getTotalMinutes() || 0) : "Auto (9am-6pm)"}</strong>
               </p>
               <p className="mt-3 mb-1 text-sm font-medium">
@@ -265,6 +277,21 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                   "No tasks were scheduled"
                 )}
               </p>
+              
+              {/* Unscheduled task details */}
+              {unscheduledTaskDetails.length > 0 && (
+                <div className="mt-4 mb-1">
+                  <h4 className="text-sm font-medium text-amber-800 mb-2">Tasks that couldn't be scheduled:</h4>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    {unscheduledTaskDetails.map(task => (
+                      <li key={task.id} className="flex justify-between">
+                        <span className="font-medium">{task.assignmentTitle}: {task.description}</span>
+                        <span>{formatMinutesToHours(task.timeAllocation)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         </div>
