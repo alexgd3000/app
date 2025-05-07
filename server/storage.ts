@@ -276,6 +276,8 @@ export class MemStorage implements IStorage {
     const newAssignment: Assignment = { 
       ...assignment, 
       id, 
+      description: assignment.description || null,
+      completed: assignment.completed || null,
       createdAt: new Date() 
     };
     this.assignments.set(id, newAssignment);
@@ -318,7 +320,13 @@ export class MemStorage implements IStorage {
   // Task operations
   async createTask(task: InsertTask): Promise<Task> {
     const id = this.taskCurrentId++;
-    const newTask: Task = { ...task, id };
+    const newTask: Task = { 
+      ...task, 
+      id,
+      completed: task.completed || null,
+      order: task.order || 0,
+      timeSpent: task.timeSpent || 0
+    };
     this.tasks.set(id, newTask);
     return newTask;
   }
@@ -367,7 +375,11 @@ export class MemStorage implements IStorage {
   // Schedule operations
   async createScheduleItem(scheduleItem: InsertScheduleItem): Promise<ScheduleItem> {
     const id = this.scheduleItemCurrentId++;
-    const newItem: ScheduleItem = { ...scheduleItem, id };
+    const newItem: ScheduleItem = { 
+      ...scheduleItem, 
+      id,
+      completed: scheduleItem.completed || null
+    };
     this.scheduleItems.set(id, newItem);
     return newItem;
   }

@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/schedule/generate", async (req: Request, res: Response) => {
     try {
-      const { assignmentIds, startDate } = req.body;
+      const { assignmentIds, startDate, availableMinutes } = req.body;
       
       if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
         return res.status(400).json({ message: "Assignment IDs must be a non-empty array" });
@@ -226,11 +226,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid date format" });
       }
       
-      const schedule = await storage.generateSchedule(assignmentIds, date);
+      // Convert availableMinutes to a number if it exists
+      const minutes = availableMinutes ? Number(availableMinutes) : undefined;
+      
+      const result = await storage.generateSchedule(assignmentIds, date, minutes);
       
       // Expand schedule items to include task and assignment details
       const expandedItems = await Promise.all(
-        schedule.map(async (item) => {
+        result.scheduleItems.map(async (item) => {
           const task = await storage.getTask(item.taskId);
           if (!task) return { ...item, task: null, assignment: null };
           
@@ -239,7 +242,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      return res.json(expandedItems);
+      // Return both the expanded schedule items and information about tasks that couldn't be scheduled
+      return res.json({
+        scheduleItems: expandedItems,
+        notScheduled: result.notScheduled,
+        totalTasksTime: result.totalTasksTime,
+        availableMinutes: minutes
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

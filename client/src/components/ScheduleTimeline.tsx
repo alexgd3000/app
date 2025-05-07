@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Task } from "@shared/schema";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface ScheduleTimelineProps {
   isLoading: boolean;
@@ -14,6 +19,10 @@ interface ScheduleTimelineProps {
 
 export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }: ScheduleTimelineProps) {
   const { toast } = useToast();
+  const [availableMinutes, setAvailableMinutes] = useState<number | undefined>(undefined);
+  const [notScheduledTasks, setNotScheduledTasks] = useState<{ taskId: number; assignmentId: number }[]>([]);
+  const [totalTasksTime, setTotalTasksTime] = useState<number>(0);
+  const [showWarning, setShowWarning] = useState<boolean>(false);
   
   const generateScheduleMutation = useMutation({
     mutationFn: async () => {
@@ -27,21 +36,49 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       
       const assignmentIds = assignments.map((a: any) => a.id);
       
-      // Generate a schedule
-      const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, {
+      // Generate a schedule with available minutes if provided
+      const payload: any = {
         assignmentIds,
         startDate: new Date().toISOString()
-      });
+      };
       
+      if (availableMinutes) {
+        payload.availableMinutes = availableMinutes;
+      }
+      
+      const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, payload);
       return scheduleResponse.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Save not scheduled tasks for display
+      if (data.notScheduled && data.notScheduled.length > 0) {
+        setNotScheduledTasks(data.notScheduled);
+        setShowWarning(true);
+      } else {
+        setNotScheduledTasks([]);
+        setShowWarning(false);
+      }
+      
+      // Save total tasks time
+      if (data.totalTasksTime) {
+        setTotalTasksTime(data.totalTasksTime);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       onRefresh();
-      toast({
-        title: "Schedule generated",
-        description: "Your optimized work schedule has been created",
-      });
+      
+      if (data.notScheduled && data.notScheduled.length > 0) {
+        toast({
+          title: "Schedule generated with warnings",
+          description: `${data.notScheduled.length} tasks couldn't fit in your available time`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Schedule generated",
+          description: "Your optimized work schedule has been created",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -102,6 +139,13 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     markScheduleItemCompletedMutation.mutate(id);
   };
   
+  // Format time for display
+  const formatMinutesToHours = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+  
   return (
     <Card className="mt-6">
       <CardHeader className="px-6 py-5 border-b border-gray-200">
@@ -110,11 +154,23 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <h2 className="text-lg font-medium text-gray-900">Today's Schedule</h2>
             <p className="mt-1 text-sm text-gray-500">Your optimized work plan for completing all assignments.</p>
           </div>
-          <div className="flex space-x-3">
-            <Button variant="outline">
-              <i className="ri-calendar-line mr-1"></i>
-              Calendar View
-            </Button>
+          
+          <div className="flex space-x-3 items-center">
+            <div className="relative">
+              <Input
+                type="number"
+                min="15"
+                placeholder="Available minutes"
+                className="w-[150px] pl-8"
+                value={availableMinutes || ""}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                  setAvailableMinutes(value);
+                }}
+              />
+              <i className="ri-time-line absolute left-2.5 top-2.5 text-gray-400"></i>
+            </div>
+            
             <Button 
               onClick={() => generateScheduleMutation.mutate()} 
               disabled={generateScheduleMutation.isPending}
@@ -134,6 +190,25 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
           </div>
         </div>
       </CardHeader>
+      
+      {showWarning && notScheduledTasks.length > 0 && (
+        <div className="px-6 pt-4">
+          <Alert className="bg-amber-50 border-amber-200">
+            <AlertTitle className="text-amber-800 flex items-center">
+              <i className="ri-error-warning-line mr-2 text-amber-500"></i>
+              Time Constraint Warning
+            </AlertTitle>
+            <AlertDescription className="text-amber-700">
+              <p>Some tasks couldn't be scheduled due to your time constraints.</p>
+              <p className="mt-1 text-sm">
+                Total task time needed: <strong>{formatMinutesToHours(totalTasksTime)}</strong>, 
+                Available time: <strong>{availableMinutes ? formatMinutesToHours(availableMinutes) : "Auto (9am-6pm)"}</strong>
+              </p>
+              <p className="mt-3 mb-1 text-sm font-medium">Unscheduled tasks: {notScheduledTasks.length}</p>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       
       <CardContent className="px-6 py-5">
         {isLoading ? (
@@ -157,14 +232,26 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <p className="mt-1 text-sm text-gray-500">
               Generate a schedule to optimize your workday
             </p>
-            <Button 
-              className="mt-3" 
-              onClick={() => generateScheduleMutation.mutate()}
-              disabled={generateScheduleMutation.isPending}
-            >
-              <i className="ri-magic-line mr-1"></i>
-              Generate Now
-            </Button>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <Input
+                type="number"
+                min="15"
+                placeholder="Available minutes"
+                className="w-[150px]"
+                value={availableMinutes || ""}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                  setAvailableMinutes(value);
+                }}
+              />
+              <Button 
+                onClick={() => generateScheduleMutation.mutate()}
+                disabled={generateScheduleMutation.isPending}
+              >
+                <i className="ri-magic-line mr-1"></i>
+                Generate Now
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="relative">
@@ -227,6 +314,37 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
           </div>
         )}
       </CardContent>
+      
+      {scheduleData.length > 0 && (
+        <CardFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="text-sm text-gray-500">
+              <strong>{scheduleData.length}</strong> tasks scheduled for today
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="15"
+                placeholder="Available minutes"
+                className="w-[150px]"
+                value={availableMinutes || ""}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                  setAvailableMinutes(value);
+                }}
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => generateScheduleMutation.mutate()}
+                disabled={generateScheduleMutation.isPending}
+              >
+                Regenerate
+              </Button>
+            </div>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }
