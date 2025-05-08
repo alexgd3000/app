@@ -136,14 +136,14 @@ export default function TimerDisplay({
           <Button
             size="sm"
             variant={timerState.isActive ? "outline" : "default"}
-            className="h-8 w-8 rounded-full p-0 flex-shrink-0"
+            className="h-8 px-4 text-xs flex-1"
             onClick={timerState.isActive ? onPause : onPlay}
             disabled={timerState.isCompleted}
           >
             {timerState.isActive ? (
-              <Pause className="h-3 w-3" />
+              <><Pause className="h-3 w-3 mr-1" /> Pause</>
             ) : (
-              <Play className="h-3 w-3 ml-0.5" />
+              <><Play className="h-3 w-3 mr-1" /> Play</>
             )}
           </Button>
           
