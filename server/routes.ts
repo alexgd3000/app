@@ -313,6 +313,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const scheduleItems = await storage.getScheduleForDate(date);
       
+      // Check if any items have the showTimeOfDay flag already set
+      // This would happen if they were created from a recent schedule generation
+      const anyItemHasShowTimeFlag = scheduleItems.some(item => 'showTimeOfDay' in item);
+      
       // Expand schedule items to include task and assignment details
       const expandedItems = await Promise.all(
         scheduleItems.map(async (item) => {
@@ -320,7 +324,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!task) return { ...item, task: null, assignment: null };
           
           const assignment = await storage.getAssignment(task.assignmentId);
-          return { ...item, task, assignment };
+          
+          // If the item doesn't have showTimeOfDay but other items do, we'll default to false
+          // Otherwise keep the existing value if it exists
+          const showTimeOfDay = 'showTimeOfDay' in item 
+            ? item.showTimeOfDay 
+            : (anyItemHasShowTimeFlag ? false : true); // Default to true for backwards compatibility
+            
+          return { ...item, task, assignment, showTimeOfDay };
         })
       );
       
@@ -332,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/schedule/generate", async (req: Request, res: Response) => {
     try {
-      const { assignmentIds, startDate, availableMinutes, prioritizeTodaysDue } = req.body;
+      const { assignmentIds, startDate, availableMinutes, prioritizeTodaysDue, showTimeOfDay } = req.body;
       
       if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
         return res.status(400).json({ message: "Assignment IDs must be a non-empty array" });
@@ -364,9 +375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
+      // Add the showTimeOfDay flag to each schedule item
+      const scheduleItemsWithTimeFlag = expandedItems.map(item => ({
+        ...item,
+        showTimeOfDay: showTimeOfDay === true
+      }));
+      
       // Return both the expanded schedule items and information about tasks that couldn't be scheduled
       return res.json({
-        scheduleItems: expandedItems,
+        scheduleItems: scheduleItemsWithTimeFlag,
         notScheduled: result.notScheduled,
         totalTasksTime: result.totalTasksTime,
         todaysDueTasksTime: result.todaysDueTasksTime || 0,
@@ -374,7 +391,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         todaysDueCompleted: result.todaysDueCompleted || false,
         extraTasksAdded: result.extraTasksAdded || 0,
         todaysUnscheduledCount: result.todaysUnscheduledCount || 0,
-        unscheduledTaskDetails: result.unscheduledTaskDetails || []
+        unscheduledTaskDetails: result.unscheduledTaskDetails || [],
+        showTimeOfDay: showTimeOfDay === true
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
