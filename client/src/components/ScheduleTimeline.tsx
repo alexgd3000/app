@@ -207,8 +207,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  // No longer need task navigation functions, as these are handled by the TaskTimerSystem
-  
   return (
     <Card className="mt-6">
       <CardHeader className="px-6 py-5 border-b border-gray-200">
@@ -336,16 +334,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       )}
       
       <CardContent className="px-6 py-5">
-        {/* Task Timer Section - Only show when we have a current task */}
-        {scheduleData.length > 0 && (
-          <div className="mb-6">
-            <TaskTimerSystem
-              scheduleData={scheduleData}
-              onRefresh={onRefresh}
-            />
-          </div>
-        )}
-      
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -414,74 +402,83 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             </div>
           </div>
         ) : (
-          <div className="relative">
-            <div className="absolute top-0 bottom-0 left-6 w-px bg-gray-200"></div>
+          <div>
+            {/* Task Timer Section - Always show at the top when we have schedule data */}
+            <div className="mb-6">
+              <TaskTimerSystem
+                scheduleData={scheduleData}
+                onRefresh={onRefresh}
+              />
+            </div>
             
-            <ul className="space-y-6">
-              {scheduleData.map((item) => {
-                const inProgress = isItemInProgress(item);
-                const completed = item.completed;
-                
-                // Determine the status label
-                let statusLabel = "Not started";
-                let statusClass = "bg-gray-100 text-gray-700";
-                
-                if (completed) {
-                  statusLabel = "Completed";
-                  statusClass = "bg-green-50 text-green-700 border-green-100";
-                } else if (inProgress) {
-                  statusLabel = "In progress";
-                  statusClass = "bg-blue-50 text-blue-700 border-blue-100";
-                }
-                
-                return (
-                  <li 
-                    key={item.id} 
-                    className="relative pl-10"
-                  >
-                    <div className="flex items-center">
-                      <div 
-                        className={`absolute left-0 p-1 rounded-full border-4 border-white ${inProgress ? 'bg-gray-100' : 'bg-white'}`}
-                      >
+            {/* Schedule Timeline Section */}
+            <div className="relative">
+              <div className="absolute top-0 bottom-0 left-6 w-px bg-gray-200"></div>
+              
+              <ul className="space-y-6">
+                {scheduleData.map((item) => {
+                  const inProgress = isItemInProgress(item);
+                  const completed = item.completed;
+                  
+                  // Determine the status label
+                  let statusLabel = "Not started";
+                  let statusClass = "bg-gray-100 text-gray-700";
+                  
+                  if (completed) {
+                    statusLabel = "Completed";
+                    statusClass = "bg-green-50 text-green-700 border-green-100";
+                  } else if (inProgress) {
+                    statusLabel = "In progress";
+                    statusClass = "bg-blue-50 text-blue-700 border-blue-100";
+                  }
+                  
+                  return (
+                    <li 
+                      key={item.id} 
+                      className="relative pl-10"
+                    >
+                      <div className="flex items-center">
                         <div 
-                          className={`w-2 h-2 rounded-full ${
-                            completed ? 'bg-green-500' : inProgress ? 'bg-blue-500' : 'bg-gray-400'
-                          }`}
-                        ></div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center">
-                          <span className={`${statusClass} text-xs px-2 py-1 rounded border mr-2 min-w-[90px] text-center`}>
-                            {statusLabel}
-                          </span>
-                          <h3 className="text-sm font-medium text-gray-900 flex-1">
-                            {item.task && item.assignment
-                              ? `${item.assignment.title}: ${item.task.description}`
-                              : "Unknown task"}
-                          </h3>
-                          
-                          {!completed && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-xs h-7 px-2 ml-2"
-                              onClick={() => handleMarkComplete(item.id)}
-                            >
-                              Complete
-                            </Button>
-                          )}
+                          className={`absolute left-0 p-1 rounded-full border-4 border-white ${inProgress ? 'bg-gray-100' : 'bg-white'}`}
+                        >
+                          <div 
+                            className={`w-2 h-2 rounded-full ${
+                              completed ? 'bg-green-500' : inProgress ? 'bg-blue-500' : 'bg-gray-400'
+                            }`}
+                          ></div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 ml-[106px]">
-                          {formatTimeRange(item.startTime, item.endTime)}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center">
+                            <span className={`${statusClass} text-xs px-2 py-1 rounded border mr-2 min-w-[90px] text-center`}>
+                              {statusLabel}
+                            </span>
+                            <h3 className="text-sm font-medium text-gray-900 flex-1">
+                              {item.task && item.assignment
+                                ? `${item.assignment.title}: ${item.task.description}`
+                                : "Unknown task"}
+                            </h3>
+                            
+                            {!completed && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-xs h-7 px-2 ml-2"
+                                onClick={() => handleMarkComplete(item.id)}
+                              >
+                                Complete
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 ml-[106px]">
+                            {formatTimeRange(item.startTime, item.endTime)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    {/* No focus button needed with new timer system */}
-                  </li>
-                );
-              })}
-            </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         )}
       </CardContent>
@@ -492,7 +489,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <div className="text-sm text-gray-500">
               <strong>{scheduleData.length}</strong> tasks scheduled for today
             </div>
-            {/* No action buttons needed here - users can use the inputs at the top of the card */}
           </div>
         </CardFooter>
       )}
