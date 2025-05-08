@@ -47,8 +47,9 @@ export default function TaskTimer({
   // Mutations for updating the task status
   const markCompletedMutation = useMutation({
     mutationFn: async () => {
-      // Calculate the time spent (at least 1 minute)
-      const timeSpentMinutes = Math.max(Math.round(timeElapsed / 60), 1);
+      // Calculate the time spent without enforcing minimum
+      const timeSpentMinutes = Math.round(timeElapsed / 60);
+      console.log(`Completing task ${taskId} with ${timeSpentMinutes} minutes spent`);
       
       // First, mark the schedule item as completed
       const scheduleResponse = await apiRequest(
@@ -64,13 +65,20 @@ export default function TaskTimer({
         `/api/tasks/${taskId}`,
         { 
           completed: true, 
-          timeSpent: timeSpentMinutes
+          // Use string format for consistent handling
+          timeSpent: timeSpentMinutes.toString()
         }
       );
       
+      // Parse the response data
+      const scheduleItem = await scheduleResponse.json();
+      const task = await taskResponse.json();
+      
+      console.log("Complete task response:", { scheduleItem, task, timeSpentMinutes });
+      
       return {
-        scheduleItem: await scheduleResponse.json(),
-        task: await taskResponse.json(),
+        scheduleItem,
+        task,
         timeSpentMinutes
       };
     },
@@ -107,23 +115,26 @@ export default function TaskTimer({
     // When a task is loaded, check if it has spent time already
     const fetchTaskDetails = async () => {
       try {
+        console.log(`Fetching task details for task ID: ${taskId}`);
         const response = await fetch(`/api/tasks/${taskId}`);
         if (response.ok) {
           const taskData = await response.json();
+          console.log(`Task data loaded:`, taskData);
           
-          // Reset timer state for this task based on stored progress
-          if (taskData.timeSpent > 0) {
-            // If task has time spent, initialize the timer with that value (converted to seconds)
-            setTimeElapsed(taskData.timeSpent * 60);
-          } else {
-            // If task has no time spent, start from zero
-            setTimeElapsed(0);
-          }
+          // Important: handle timeSpent explicitly to account for zero values
+          // Be very explicit about the value we're using to avoid conversion issues
+          const timeSpentMinutes = taskData.timeSpent === 0 ? 0 : (taskData.timeSpent || 0);
+          const timeSpentSeconds = timeSpentMinutes * 60;
+          
+          console.log(`Setting time elapsed to: ${timeSpentSeconds} seconds (${timeSpentMinutes} minutes)`);
+          
+          // Always explicitly set the time elapsed
+          setTimeElapsed(timeSpentSeconds);
           
           // Set completed state if already completed
           if (taskData.completed) {
             setLastCompletedState({
-              timeSpent: taskData.timeSpent * 60,
+              timeSpent: timeSpentSeconds,
               isCompleted: true
             });
           }
@@ -150,15 +161,21 @@ export default function TaskTimer({
       
       // Save progress to API every 30 seconds
       saveInterval = window.setInterval(() => {
-        // Only save if we have elapsed time and we're still active
-        if (timeElapsed > 0 && isActive && !isCompleted) {
-          const timeSpentMinutes = Math.max(Math.round(timeElapsed / 60), 1);
+        // Only save if timer is active and the task isn't completed
+        if (isActive && !isCompleted) {
+          // Don't enforce minimum value - allow zero values
+          const timeSpentMinutes = Math.round(timeElapsed / 60);
+          
+          console.log(`Auto-saving task progress for task ${taskId}: ${timeSpentMinutes} minutes`);
           
           // Save current progress to the task
           apiRequest(
             "PUT",
             `/api/tasks/${taskId}`,
-            { timeSpent: timeSpentMinutes }
+            { 
+              // Use string format for consistent handling with zero values
+              timeSpent: timeSpentMinutes.toString() 
+            }
           ).then(() => {
             console.log(`Auto-saved task timer progress: ${timeSpentMinutes} minutes`);
           }).catch(error => {
@@ -290,14 +307,16 @@ export default function TaskTimer({
       
       // Then, mark the task as not completed in the assignment
       // Keep the timeSpent value to preserve progress
+      const timeToRestore = lastCompletedState ? Math.round(lastCompletedState.timeSpent / 60) : 0;
+      console.log(`Restoring time for task ${taskId} to ${timeToRestore} minutes`);
+      
       const taskResponse = await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
         { 
           completed: false,
-          // Only update the time spent if we have a stored value 
-          // Don't enforce minimum - preserve exact time (converted to minutes)
-          ...(lastCompletedState ? { timeSpent: Math.round(lastCompletedState.timeSpent / 60) } : {})
+          // Use string format for consistent handling with zero values
+          timeSpent: timeToRestore.toString()
         }
       );
       
