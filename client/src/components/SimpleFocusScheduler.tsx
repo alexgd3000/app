@@ -144,10 +144,6 @@ export default function SimpleFocusScheduler() {
     });
   };
 
-  if (isLoading) {
-    return <div className="p-4 text-center">Loading schedule...</div>;
-  }
-
   // Generate schedule mutation
   const generateScheduleMutation = useMutation({
     mutationFn: async () => {
@@ -202,6 +198,10 @@ export default function SimpleFocusScheduler() {
       });
     }
   });
+  
+  if (isLoading) {
+    return <div className="p-4 text-center">Loading schedule...</div>;
+  }
 
   if (sortedTasks.length === 0) {
     return (
