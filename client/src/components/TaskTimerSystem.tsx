@@ -6,7 +6,7 @@ import TimerDisplay from './TimerDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, ListChecks } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ListChecks, CheckCircle } from 'lucide-react';
 
 interface TaskTimerSystemProps {
   scheduleData: any[];
