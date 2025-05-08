@@ -1,14 +1,30 @@
 import { Task } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TaskItemProps {
   task: Task;
   isActive?: boolean;
   onUpdate: (id: number, completed: boolean) => void;
+  onMoveUp?: (task: Task) => void;
+  onMoveDown?: (task: Task) => void;
+  showReorderButtons?: boolean;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
-export default function TaskItem({ task, isActive = false, onUpdate }: TaskItemProps) {
+export default function TaskItem({ 
+  task, 
+  isActive = false, 
+  onUpdate,
+  onMoveUp,
+  onMoveDown,
+  showReorderButtons = false,
+  isFirst = false,
+  isLast = false
+}: TaskItemProps) {
   // Format time as hours and minutes
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -24,14 +40,41 @@ export default function TaskItem({ task, isActive = false, onUpdate }: TaskItemP
   return (
     <div 
       className={cn(
-        "flex items-start space-x-3 p-3 border rounded-lg",
+        "flex items-start p-3 border rounded-lg",
         task.completed ? "border-gray-100" : "border-gray-100 hover:bg-gray-50",
-        isActive ? "border-2 border-primary-200 bg-primary-50" : ""
+        isActive ? "border-2 border-primary-200 bg-primary-50" : "",
+        showReorderButtons ? "space-x-2" : "space-x-3"
       )}
     >
+      {/* Reorder buttons */}
+      {showReorderButtons && (
+        <div className="flex flex-col space-y-1 mt-0.5">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+            disabled={isFirst}
+            onClick={() => onMoveUp && onMoveUp(task)}
+            title="Move task up"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+            disabled={isLast}
+            onClick={() => onMoveDown && onMoveDown(task)}
+            title="Move task down"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+      
       <div className="flex-shrink-0 pt-0.5">
         <Checkbox 
-          checked={task.completed} 
+          checked={Boolean(task.completed)} 
           onCheckedChange={(checked) => onUpdate(task.id, checked === true)}
           id={`task-${task.id}`}
         />

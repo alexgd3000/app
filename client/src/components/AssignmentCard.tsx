@@ -110,6 +110,96 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
     });
   };
   
+  // Move task up in order
+  const moveTaskUp = (task: Task) => {
+    const taskIndex = tasks.findIndex(t => t.id === task.id);
+    if (taskIndex <= 0) return; // Already at the top
+    
+    // Get the tasks we need to swap
+    const taskToMoveUp = tasks[taskIndex];
+    const taskToMoveDown = tasks[taskIndex - 1];
+    
+    console.log("Task details - taskToMoveUp:", taskToMoveUp);
+    console.log("Task details - taskToMoveDown:", taskToMoveDown);
+    
+    // Update local state immediately for better UX
+    const newTasks = [...tasks];
+    // Swap the tasks
+    const temp = newTasks[taskIndex];
+    newTasks[taskIndex] = newTasks[taskIndex - 1];
+    newTasks[taskIndex - 1] = temp;
+    
+    // Use individual task update to send updates to server
+    updateTaskMutation.mutate({
+      id: taskToMoveUp.id,
+      data: {
+        assignmentId: taskToMoveUp.assignmentId,
+        description: taskToMoveUp.description,
+        timeAllocation: taskToMoveUp.timeAllocation,
+        order: taskIndex - 1,
+        completed: taskToMoveUp.completed,
+        timeSpent: taskToMoveUp.timeSpent || 0
+      }
+    });
+    
+    updateTaskMutation.mutate({
+      id: taskToMoveDown.id,
+      data: {
+        assignmentId: taskToMoveDown.assignmentId,
+        description: taskToMoveDown.description,
+        timeAllocation: taskToMoveDown.timeAllocation,
+        order: taskIndex,
+        completed: taskToMoveDown.completed,
+        timeSpent: taskToMoveDown.timeSpent || 0
+      }
+    });
+  };
+  
+  // Move task down in order
+  const moveTaskDown = (task: Task) => {
+    const taskIndex = tasks.findIndex(t => t.id === task.id);
+    if (taskIndex >= tasks.length - 1) return; // Already at the bottom
+    
+    // Get the tasks we need to swap
+    const taskToMoveDown = tasks[taskIndex];
+    const taskToMoveUp = tasks[taskIndex + 1];
+    
+    console.log("Task details - taskToMoveDown:", taskToMoveDown);
+    console.log("Task details - taskToMoveUp:", taskToMoveUp);
+    
+    // Update local state immediately for better UX
+    const newTasks = [...tasks];
+    // Swap the tasks
+    const temp = newTasks[taskIndex];
+    newTasks[taskIndex] = newTasks[taskIndex + 1];
+    newTasks[taskIndex + 1] = temp;
+    
+    // Use individual task update to send updates to server
+    updateTaskMutation.mutate({
+      id: taskToMoveDown.id,
+      data: {
+        assignmentId: taskToMoveDown.assignmentId,
+        description: taskToMoveDown.description,
+        timeAllocation: taskToMoveDown.timeAllocation,
+        order: taskIndex + 1,
+        completed: taskToMoveDown.completed,
+        timeSpent: taskToMoveDown.timeSpent || 0
+      }
+    });
+    
+    updateTaskMutation.mutate({
+      id: taskToMoveUp.id,
+      data: {
+        assignmentId: taskToMoveUp.assignmentId,
+        description: taskToMoveUp.description,
+        timeAllocation: taskToMoveUp.timeAllocation,
+        order: taskIndex,
+        completed: taskToMoveUp.completed,
+        timeSpent: taskToMoveUp.timeSpent || 0
+      }
+    });
+  };
+  
   const handleTaskCreated = () => {
     refetchTasks();
     onRefresh();
@@ -202,12 +292,17 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
             <div className="p-4 md:w-2/3">
               <h3 className="text-sm font-medium text-gray-900 mb-3">Task Breakdown</h3>
               <div className="space-y-2">
-                {tasks.map((task) => (
+                {tasks.map((task, index) => (
                   <TaskItem
                     key={task.id}
                     task={task}
                     isActive={task.id === activeTaskId}
                     onUpdate={handleTaskUpdate}
+                    onMoveUp={moveTaskUp}
+                    onMoveDown={moveTaskDown}
+                    showReorderButtons={true}
+                    isFirst={index === 0}
+                    isLast={index === tasks.length - 1}
                   />
                 ))}
                 
@@ -294,12 +389,17 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
         <h3 className="text-sm font-medium text-gray-900 mb-3">Task Breakdown</h3>
         
         <div className="space-y-3">
-          {tasks.map((task) => (
+          {tasks.map((task, index) => (
             <TaskItem
               key={task.id}
               task={task}
               isActive={task.id === activeTaskId}
               onUpdate={handleTaskUpdate}
+              onMoveUp={moveTaskUp}
+              onMoveDown={moveTaskDown}
+              showReorderButtons={true}
+              isFirst={index === 0}
+              isLast={index === tasks.length - 1}
             />
           ))}
         </div>
