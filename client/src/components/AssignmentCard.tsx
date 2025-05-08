@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { Pencil } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import TaskItem from "@/components/TaskItem";
-import TimerDisplay from "@/components/TimerDisplay";
 import AddTaskForm from "@/components/AddTaskForm";
 import EditAssignmentDialog from "@/components/EditAssignmentDialog";
 import { Separator } from "@/components/ui/separator";
@@ -32,7 +31,7 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
   });
 
   // Get active task from schedule
-  const { data: scheduleData = [] } = useQuery({
+  const { data: scheduleData = [] } = useQuery<any[]>({
     queryKey: ['/api/schedule', format(new Date(), 'yyyy-MM-dd')],
     enabled: isActive,
   });
@@ -90,7 +89,7 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
   // Find the active task from the schedule
   useEffect(() => {
     if (isActive && scheduleData.length > 0) {
-      const activeScheduleItem = scheduleData.find(item => 
+      const activeScheduleItem = scheduleData.find((item: any) => 
         item.task && 
         item.task.assignmentId === assignment.id && 
         !item.completed && 
@@ -280,10 +279,13 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
         onAssignmentUpdated={onRefresh}
       />
       
-      {/* Timer Display for active assignment */}
-      {isActive && activeTask && (
-        <div className="px-6 py-6 border-b border-gray-200 bg-primary-50">
-          <TimerDisplay task={activeTask} />
+      {/* Active assignment indicator */}
+      {isActive && (
+        <div className="px-6 py-2 border-b border-gray-200 bg-primary-50">
+          <p className="text-sm text-primary-700 font-medium">
+            <i className="ri-time-line mr-1"></i>
+            This assignment has tasks scheduled for today
+          </p>
         </div>
       )}
       
@@ -333,12 +335,33 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
               <p className="text-xs text-gray-500">{formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}</p>
             </div>
           </div>
-          <Button 
-            variant={isActive ? "outline" : "default"}
-            disabled={tasks.length === 0 || tasks.every(t => t.completed)}
-          >
-            {isActive ? "Mark Complete" : "Start Timer"}
-          </Button>
+          {isActive ? (
+            <Button 
+              variant="outline"
+              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
+              onClick={() => {
+                // Navigate to the schedule tab where the tasks can be managed in the Today's Schedule view
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              View Schedule
+            </Button>
+          ) : (
+            <Button 
+              variant="default"
+              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
+              onClick={() => {
+                // Generate a schedule for this assignment
+                toast({
+                  title: "Schedule generation",
+                  description: "Go to Today's Schedule to generate a schedule including this assignment",
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              Schedule Tasks
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>
