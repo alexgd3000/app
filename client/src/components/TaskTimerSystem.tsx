@@ -46,22 +46,10 @@ export default function TaskTimerSystem({
   } = useTimerSystem({
     scheduleData,
     onTimerComplete: () => {
-      // Invalidate queries to refresh UI and sync between tabs
+      // Only refresh the schedule data in the Focus tab
+      // Do NOT invalidate assignments/tasks - this will only happen
+      // when the user manually clicks "Update Assignments" button
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
-      
-      // Also invalidate specific task queries that Planner may be using
-      queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
-      
-      // Force a full refresh of all assignment tasks
-      scheduleData.forEach(item => {
-        if (item.task?.assignmentId) {
-          queryClient.invalidateQueries({ 
-            queryKey: [`/api/assignments/${item.task.assignmentId}/tasks`] 
-          });
-        }
-      });
-      
       onRefresh();
     }
   });

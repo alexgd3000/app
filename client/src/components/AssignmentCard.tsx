@@ -43,8 +43,11 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
       return response.json();
     },
     onSuccess: () => {
+      // Only invalidate the specific assignment tasks query
+      // Do NOT invalidate schedule queries to prevent auto-sync between tabs
       queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/tasks`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      
+      // Call onRefresh to update the local UI state only in this component
       onRefresh();
     },
     onError: (error: Error) => {

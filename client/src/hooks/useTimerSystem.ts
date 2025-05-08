@@ -373,13 +373,19 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   useEffect(() => {
     let intervalId: number | null = null;
     
-    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
+    // Check if there's an active task and if it's actually active in the timer states
+    if (activeTaskId && 
+        timerStates[activeTaskId] && 
+        timerStates[activeTaskId].isActive) {
+      
+      console.log(`Starting timer increment interval for task ${activeTaskId}`);
       intervalId = window.setInterval(incrementActiveTimer, 1000);
     }
     
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
+        console.log(`Clearing timer increment interval`);
       }
     };
   }, [activeTaskId, timerStates]);

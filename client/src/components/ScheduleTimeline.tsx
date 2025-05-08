@@ -193,6 +193,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       return response.json();
     },
     onSuccess: () => {
+      // Only invalidate the schedule data for Focus tab
+      // Do NOT invalidate assignment queries to prevent auto-sync between tabs
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       onRefresh();
     },
