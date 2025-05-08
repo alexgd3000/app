@@ -226,7 +226,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
                         '0:00'
                       }
                     </span>
-                    <span className="text-xs text-gray-400 ml-1">/{durationMins}m</span>
+                    <span className="text-xs text-gray-400 ml-1">/{Math.floor(durationMins / 60)}:{(durationMins % 60).toString().padStart(2, '0')}</span>
                   </div>
                 </div>
               </div>

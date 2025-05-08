@@ -66,13 +66,9 @@ export default function TimerDisplay({
     progressPercentage
   });
 
-  // Format total duration
+  // Format total duration in mm:ss format
   const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0
-      ? `${hours}h ${mins > 0 ? `${mins}m` : ''}`
-      : `${mins}m`;
+    return `${Math.floor(minutes / 60)}:${(minutes % 60).toString().padStart(2, '0')}`;
   };
 
   return (
