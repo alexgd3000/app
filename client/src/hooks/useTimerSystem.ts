@@ -57,15 +57,12 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       const currentTimerState = timerStates[taskId];
       const timeElapsed = savedState?.timeElapsed || currentTimerState?.timeElapsed || 0;
       
-      // Check if we already have an active task with this ID - if so, preserve its active state
-      const isCurrentlyActive = activeTaskId === taskId && currentTimerState?.isActive;
-      
       newTimerStates[taskId] = {
         taskId,
         assignmentId: item.task?.assignmentId || 0,
         timeElapsed: timeElapsed,
-        isActive: isCurrentlyActive || false, // Preserve active state if it's the current active task
-        isCompleted: item.completed || false, // Always use database value for completion
+        isActive: false, // Always start inactive
+        isCompleted: item.completed || false,
         lastUpdated: Date.now()
       };
     });
@@ -373,19 +370,13 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   useEffect(() => {
     let intervalId: number | null = null;
     
-    // Check if there's an active task and if it's actually active in the timer states
-    if (activeTaskId && 
-        timerStates[activeTaskId] && 
-        timerStates[activeTaskId].isActive) {
-      
-      console.log(`Starting timer increment interval for task ${activeTaskId}`);
+    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
       intervalId = window.setInterval(incrementActiveTimer, 1000);
     }
     
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
-        console.log(`Clearing timer increment interval`);
       }
     };
   }, [activeTaskId, timerStates]);

@@ -46,10 +46,9 @@ export default function TaskTimerSystem({
   } = useTimerSystem({
     scheduleData,
     onTimerComplete: () => {
-      // Only refresh the schedule data in the Focus tab
-      // Do NOT invalidate assignments/tasks - this will only happen
-      // when the user manually clicks "Update Assignments" button
+      // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
       onRefresh();
     }
   });
@@ -58,12 +57,6 @@ export default function TaskTimerSystem({
   const currentTask = activeTaskId
     ? scheduleData.find(item => item.taskId === activeTaskId)
     : null;
-    
-  // If for some reason we can't find the current task by ID, use the first task in the schedule
-  if (activeTaskId && !currentTask && scheduleData.length > 0) {
-    console.log('Active task not found in schedule data - using first task as fallback');
-    switchToTask(scheduleData[0].taskId);
-  }
   
   // Get the current task index in the sorted schedule
   const currentTaskIndex = currentTask
