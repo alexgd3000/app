@@ -22,6 +22,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const { toast } = useToast();
   const [availableHours, setAvailableHours] = useState<string>('');
   const [availableMinutes, setAvailableMinutes] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('09:00');
   const [notScheduledTasks, setNotScheduledTasks] = useState<{ taskId: number; assignmentId: number }[]>([]);
   const [totalTasksTime, setTotalTasksTime] = useState<number>(0);
   const [todaysDueTasksTime, setTodaysDueTasksTime] = useState<number>(0);
@@ -61,11 +62,17 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       // Get assignmentIds
       const assignmentIds = sortedAssignments.map((a: any) => a.id);
       
+      // Create a date object from today with the specified start time
+      const today = new Date();
+      const [hours, minutes] = startTime.split(':').map(Number);
+      today.setHours(hours, minutes, 0, 0);
+      
       // Generate a schedule with available minutes if provided
       const payload: any = {
         assignmentIds,
-        startDate: new Date().toISOString(),
-        prioritizeTodaysDue: true // New flag to prioritize today's due tasks
+        startDate: today.toISOString(),
+        prioritizeTodaysDue: true, // Flag to prioritize today's due tasks
+        startTime: startTime // Include the start time for display purposes
       };
       
       const totalMinutes = getTotalMinutes();
@@ -211,35 +218,53 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <p className="mt-1 text-sm text-gray-500">Your optimized work plan for completing all assignments.</p>
           </div>
           
-          <div className="flex space-x-3 items-center">
-            <div className="flex space-x-2 items-center">
-              <div className="relative">
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="Hours"
-                  className="w-[80px] pl-8"
-                  value={availableHours}
-                  onChange={(e) => setAvailableHours(e.target.value)}
-                />
-                <i className="ri-time-line absolute left-2.5 top-2.5 text-gray-400"></i>
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:space-x-3 items-start sm:items-center">
+            <div className="grid grid-cols-2 sm:flex sm:space-x-4 items-center gap-2">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Available Time:</span>
+                <div className="flex space-x-2">
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Hours"
+                      className="w-[70px] pl-8"
+                      value={availableHours}
+                      onChange={(e) => setAvailableHours(e.target.value)}
+                    />
+                    <i className="ri-time-line absolute left-2.5 top-2.5 text-gray-400"></i>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="Mins"
+                      className="w-[60px]"
+                      value={availableMinutes}
+                      onChange={(e) => setAvailableMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="relative">
-                <Input
-                  type="number"
-                  min="0"
-                  max="59"
-                  placeholder="Mins"
-                  className="w-[70px]"
-                  value={availableMinutes}
-                  onChange={(e) => setAvailableMinutes(e.target.value)}
-                />
+              
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Start Time:</span>
+                <div className="relative">
+                  <Input 
+                    type="time"
+                    className="w-[110px]"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
             
             <Button 
               onClick={() => generateScheduleMutation.mutate()} 
               disabled={generateScheduleMutation.isPending}
+              className="mt-0"
             >
               {generateScheduleMutation.isPending ? (
                 <span className="flex items-center">
@@ -318,34 +343,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               scheduleData={scheduleData}
               onRefresh={onRefresh}
             />
-            
-            {/* Task details section */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900">Today's Progress</h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {scheduleData.filter(item => item.completed).length} of {scheduleData.length} tasks completed
-                  </p>
-                </div>
-                
-                <div className="flex items-center">
-                  <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                    <path d="M8 12L11 15L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              </div>
-              
-              <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full" 
-                  style={{ 
-                    width: `${(scheduleData.filter(item => item.completed).length / scheduleData.length) * 100}%` 
-                  }}
-                ></div>
-              </div>
-            </div>
           </div>
         )}
       
@@ -370,32 +367,49 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <p className="mt-1 text-sm text-gray-500">
               Generate a schedule to optimize your workday
             </p>
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <div className="flex space-x-2">
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="Hours"
-                  className="w-[80px]"
-                  value={availableHours}
-                  onChange={(e) => setAvailableHours(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  min="0"
-                  max="59"
-                  placeholder="Mins"
-                  className="w-[70px]"
-                  value={availableMinutes}
-                  onChange={(e) => setAvailableMinutes(e.target.value)}
-                />
+            <div className="mt-3 flex flex-col items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-500 mr-2">Available:</span>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Hours"
+                      className="w-[70px]"
+                      value={availableHours}
+                      onChange={(e) => setAvailableHours(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="Mins"
+                      className="w-[60px]"
+                      value={availableMinutes}
+                      onChange={(e) => setAvailableMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-500 mr-2">Start at:</span>
+                  <Input 
+                    type="time"
+                    className="w-[110px]"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
               </div>
+              
               <Button 
                 onClick={() => generateScheduleMutation.mutate()}
                 disabled={generateScheduleMutation.isPending}
+                className="mt-1"
               >
                 <i className="ri-magic-line mr-1"></i>
-                Generate Now
+                Generate Schedule
               </Button>
             </div>
           </div>

@@ -92,10 +92,7 @@ export default function TimerDisplay({
 
           <Progress value={progressPercentage} className="h-2" />
 
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0:00</span>
-            <span>{formatDuration(task.timeAllocation)}</span>
-          </div>
+          {/* Removed redundant time labels */}
         </div>
 
         {/* Music player style controls */}
