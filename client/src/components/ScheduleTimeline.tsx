@@ -421,25 +421,50 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <div className="text-sm text-gray-500">
               <strong>{scheduleData.length}</strong> tasks scheduled for today
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs"
-              onClick={() => resetAllTimersMutation.mutate()}
-              disabled={resetAllTimersMutation.isPending || !resetAllTimersFunction}
-            >
-              {resetAllTimersMutation.isPending ? (
-                <span className="flex items-center">
-                  <RotateCcw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                  Resetting...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                  Reset All Timers
-                </span>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs bg-primary/10 text-primary hover:bg-primary/20"
+                onClick={() => {
+                  // Refresh the assignments list to show updated status
+                  queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+                  toast({
+                    title: "Assignments refreshed",
+                    description: "Assignment list has been updated."
+                  });
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                  <path d="M16 21h5v-5"></path>
+                </svg>
+                Update Assignments
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={() => resetAllTimersMutation.mutate()}
+                disabled={resetAllTimersMutation.isPending || !resetAllTimersFunction}
+              >
+                {resetAllTimersMutation.isPending ? (
+                  <span className="flex items-center">
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Resetting...
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Reset All Timers
+                  </span>
+                )}
+              </Button>
+            </div>
           </div>
         </CardFooter>
       )}

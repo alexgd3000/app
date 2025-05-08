@@ -16,15 +16,27 @@ export default function Planner() {
   const [sortBy, setSortBy] = useState<string>("dueDate");
 
   const { 
-    data: assignments = [], 
-    isLoading: assignmentsLoading,
-    refetch: refetchAssignments
+    data: incompleteAssignments = [], 
+    isLoading: incompleteAssignmentsLoading,
+    refetch: refetchIncompleteAssignments
   } = useQuery<Assignment[]>({
     queryKey: ['/api/assignments/incomplete'],
   });
+  
+  // Query to fetch all assignments to filter for completed ones
+  const { 
+    data: allAssignments = [], 
+    isLoading: allAssignmentsLoading,
+    refetch: refetchAllAssignments
+  } = useQuery<Assignment[]>({
+    queryKey: ['/api/assignments'],
+  });
+  
+  // Filter out completed assignments
+  const completedAssignments = allAssignments.filter(a => a.completed);
 
   // Sort assignments based on the selected criteria
-  const sortedAssignments = [...assignments].sort((a, b) => {
+  const sortedIncompleteAssignments = [...incompleteAssignments].sort((a, b) => {
     switch (sortBy) {
       case "dueDate":
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -39,7 +51,8 @@ export default function Planner() {
   });
 
   const refreshData = () => {
-    refetchAssignments();
+    refetchIncompleteAssignments();
+    refetchAllAssignments();
   };
 
   return (
@@ -117,7 +130,7 @@ export default function Planner() {
           
           <TabsContent value="current" className="mt-6">
             {/* Assignment / Tasks Dashboard */}
-            {assignmentsLoading ? (
+            {incompleteAssignmentsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col p-6 space-y-4">
@@ -130,7 +143,7 @@ export default function Planner() {
                   </div>
                 ))}
               </div>
-            ) : sortedAssignments.length === 0 ? (
+            ) : sortedIncompleteAssignments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
                   <i className="ri-task-line text-5xl"></i>
@@ -144,7 +157,7 @@ export default function Planner() {
               </div>
             ) : (
               <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''} gap-6`}>
-                {sortedAssignments.map((assignment) => (
+                {sortedIncompleteAssignments.map((assignment: Assignment) => (
                   <AssignmentCard
                     key={assignment.id}
                     assignment={assignment}
