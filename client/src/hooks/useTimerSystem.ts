@@ -219,7 +219,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     saveTimerStates();
   };
   
-  // Mark a task as complete
+  // Mark a task as complete - only updates completion status, doesn't navigate
   const completeTask = async (taskId: number, scheduleItemId: number) => {
     if (!timerStates[taskId]) return;
     
@@ -227,6 +227,16 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     pauseTimer(taskId);
     
     try {
+      // Update local state immediately for UI feedback
+      setTimerStates(prev => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          isCompleted: true,
+          isActive: false
+        }
+      }));
+      
       // Update the schedule item
       await apiRequest(
         "PUT", 
@@ -245,45 +255,39 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       );
       
-      // Update local state
+      // Notify parent to refresh UI
+      onTimerComplete(taskId);
+    } catch (error) {
+      console.error("Failed to complete task:", error);
+      
+      // Revert the local state change on error
       setTimerStates(prev => ({
         ...prev,
         [taskId]: {
           ...prev[taskId],
-          isCompleted: true,
-          isActive: false
+          isCompleted: false
         }
       }));
-      
-      // Notify parent
-      onTimerComplete(taskId);
-      
-      // Get all tasks sorted by time
-      const allTasksSorted = [...scheduleData]
-        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-      
-      // Find the index of the current task in the sorted list
-      const currentIndex = allTasksSorted.findIndex(item => item.taskId === taskId);
-      
-      // If there is a next task (regardless of completion status), move to it
-      if (currentIndex >= 0 && currentIndex < allTasksSorted.length - 1) {
-        const nextTask = allTasksSorted[currentIndex + 1];
-        console.log(`Moving to next sequential task ${nextTask.taskId} after completing ${taskId}`);
-        setActiveTaskId(nextTask.taskId);
-      }
-    } catch (error) {
-      console.error("Failed to complete task:", error);
     }
     
     // Save updated states
     saveTimerStates();
   };
   
-  // Undo task completion
-  const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false, skipNotify: boolean = false) => {
+  // Undo task completion - toggle a task back to incomplete state
+  const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
     if (!timerStates[taskId]) return;
     
     try {
+      // Update local state first for immediate UI feedback
+      setTimerStates(prev => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          isCompleted: false
+        }
+      }));
+      
       // Update the schedule item
       await apiRequest(
         "PUT", 
@@ -295,31 +299,28 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
-        { 
-          completed: false
-        }
+        { completed: false }
       );
       
-      // Update local state
-      setTimerStates(prev => ({
-        ...prev,
-        [taskId]: {
-          ...prev[taskId],
-          isCompleted: false
-        }
-      }));
-      
-      // Only set as active if requested (now optional)
+      // Only set as active if requested - this does NOT navigate, 
+      // it only updates the active task for UI focus
       if (makeActive) {
         setActiveTaskId(taskId);
       }
       
-      // Notify parent (optional - can be skipped to prevent unwanted navigation)
-      if (!skipNotify) {
-        onTimerComplete(taskId);
-      }
+      // Always notify parent to refresh UI
+      onTimerComplete(taskId);
     } catch (error) {
       console.error("Failed to undo task completion:", error);
+      
+      // Revert the local state change on error
+      setTimerStates(prev => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          isCompleted: true // Revert back to completed
+        }
+      }));
     }
     
     // Save updated states

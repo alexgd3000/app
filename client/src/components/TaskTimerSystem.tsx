@@ -135,7 +135,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
         onPause={() => pauseTimer(currentTask.taskId)}
         onReset={() => resetTimer(currentTask.taskId)}
         onComplete={() => completeTask(currentTask.taskId, currentTask.id)}
-        onUndo={() => undoTaskCompletion(currentTask.taskId, currentTask.id, true, false)}
+        onUndo={() => undoTaskCompletion(currentTask.taskId, currentTask.id, true)}
         onPrevious={hasPreviousTask ? handlePreviousTask : undefined}
         onNext={hasNextTask ? handleNextTask : undefined}
       />
