@@ -80,12 +80,10 @@ export default function TimerDisplay({
 
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
-            <div>
-              <span className="font-medium">Time spent:</span>{" "}
-              <Badge variant="outline">{formatTime(timerState.timeElapsed)}</Badge>
+            <div className="text-lg font-medium text-gray-700">
+              {formatTime(timerState.timeElapsed)}
             </div>
             <div>
-              <span className="font-medium">Allocated:</span>{" "}
               <Badge variant="outline">{formatDuration(task.timeAllocation)}</Badge>
             </div>
           </div>
