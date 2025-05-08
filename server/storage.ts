@@ -24,7 +24,7 @@ export interface IStorage {
   getTask(id: number): Promise<Task | undefined>;
   getTasksByAssignment(assignmentId: number): Promise<Task[]>;
   updateTask(id: number, data: Partial<InsertTask>): Promise<Task | undefined>;
-  updateTasksOrder(tasks: {id: number, order: number}[]): Promise<boolean>;
+  updateTasksOrder(tasks: {id: number, order: number, assignmentId?: number}[]): Promise<boolean>;
   deleteTask(id: number): Promise<boolean>;
   
   // Schedule operations
@@ -350,7 +350,9 @@ export class MemStorage implements IStorage {
     return updatedTask;
   }
   
-  async updateTasksOrder(tasks: {id: number, order: number}[]): Promise<boolean> {
+  async updateTasksOrder(tasks: {id: number, order: number, assignmentId?: number}[]): Promise<boolean> {
+    console.log("Storage updateTasksOrder called with:", JSON.stringify(tasks));
+    
     // Check if all tasks exist first
     for (const { id } of tasks) {
       const task = this.tasks.get(id);
@@ -361,8 +363,9 @@ export class MemStorage implements IStorage {
     
     // If we get here, all tasks exist, so update them
     for (const { id, order } of tasks) {
-      const task = this.tasks.get(id);
-      this.tasks.set(id, { ...task!, order });
+      const task = this.tasks.get(id)!;
+      this.tasks.set(id, { ...task, order });
+      console.log(`Task ${id} updated to order ${order} (assignment: ${task.assignmentId})`);
     }
     
     return true;

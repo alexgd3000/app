@@ -311,8 +311,11 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     // Update order properties
     const tasksWithNewOrder = updatedTasks.map((task, i) => ({
       id: task.id,
-      order: i
+      order: i,
+      assignmentId: task.assignmentId // Include assignmentId which the backend may require
     }));
+    
+    console.log("Tasks being reordered with details:", updatedTasks);
     
     // Call the reorder API
     reorderMutation.mutate(tasksWithNewOrder);
@@ -333,8 +336,11 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     // Update order properties
     const tasksWithNewOrder = updatedTasks.map((task, i) => ({
       id: task.id,
-      order: i
+      order: i,
+      assignmentId: task.assignmentId // Include assignmentId which the backend may require
     }));
+    
+    console.log("Tasks being reordered with details:", updatedTasks);
     
     // Call the reorder API
     reorderMutation.mutate(tasksWithNewOrder);
