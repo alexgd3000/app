@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Pause, RotateCcw, CheckCircle } from "lucide-react";
+import { Play, Pause, RotateCcw, CheckCircle, UndoIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,27 @@ export default function TaskTimer({
     }
   });
 
+  // Update time elapsed when a task is first loaded
+  useEffect(() => {
+    // When a task is loaded, check if it has spent time already
+    const fetchTaskDetails = async () => {
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`);
+        if (response.ok) {
+          const taskData = await response.json();
+          // If task has time spent, initialize the timer with that value (converted to seconds)
+          if (taskData.timeSpent > 0) {
+            setTimeElapsed(taskData.timeSpent * 60);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching task details:", error);
+      }
+    };
+    
+    fetchTaskDetails();
+  }, [taskId]);
+  
   // Start timer if task is active
   useEffect(() => {
     let interval: number | null = null;
@@ -136,7 +157,71 @@ export default function TaskTimer({
 
   // Handle complete button click
   const completeTask = () => {
+    // Store the current state before completing the task to enable undoing
+    setLastCompletedState({
+      timeSpent: timeElapsed,
+      isCompleted: false
+    });
     markCompletedMutation.mutate();
+  };
+  
+  // Mutation for undoing a task completion
+  const undoCompleteMutation = useMutation({
+    mutationFn: async () => {
+      // First, mark the schedule item as not completed
+      const scheduleResponse = await apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
+        { completed: false }
+      );
+      
+      // Then, mark the task as not completed in the assignment
+      // Keep the timeSpent value to preserve progress
+      const taskResponse = await apiRequest(
+        "PUT",
+        `/api/tasks/${taskId}`,
+        { 
+          completed: false,
+          // Only update the time spent if we have a stored value
+          ...(lastCompletedState ? { timeSpent: Math.max(Math.round(lastCompletedState.timeSpent / 60), 1) } : {})
+        }
+      );
+      
+      return {
+        scheduleItem: await scheduleResponse.json(),
+        task: await taskResponse.json()
+      };
+    },
+    onSuccess: () => {
+      // Restore the previous time elapsed state
+      if (lastCompletedState) {
+        setTimeElapsed(lastCompletedState.timeSpent);
+      }
+      
+      toast({
+        title: "Task status reset",
+        description: "Task has been marked as in progress again.",
+      });
+      
+      // Invalidate all relevant queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      
+      // Call the parent component's onComplete callback to update the UI
+      onComplete();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle undo complete button click
+  const undoCompleteTask = () => {
+    undoCompleteMutation.mutate();
   };
 
   return (
@@ -206,6 +291,18 @@ export default function TaskTimer({
                   Reset
                 </Button>
               </>
+            )}
+            
+            {isCompleted && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={undoCompleteTask}
+                disabled={undoCompleteMutation.isPending}
+              >
+                <UndoIcon className="h-4 w-4 mr-1" />
+                Undo Complete
+              </Button>
             )}
           </div>
           

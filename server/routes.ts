@@ -117,6 +117,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get a single task by ID
+  app.get("/api/tasks/:id", async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const task = await storage.getTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      return res.json(task);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
       // Convert timeAllocation to minutes
