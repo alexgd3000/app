@@ -258,15 +258,18 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       // Notify parent
       onTimerComplete(taskId);
       
-      // Move to next task if possible
-      const taskIds = scheduleData
-        .filter(item => !item.completed)
-        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-        .map(item => item.taskId);
+      // Get all tasks sorted by time
+      const allTasksSorted = [...scheduleData]
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
       
-      const currentIndex = taskIds.indexOf(taskId);
-      if (currentIndex < taskIds.length - 1) {
-        setActiveTaskId(taskIds[currentIndex + 1]);
+      // Find the index of the current task in the sorted list
+      const currentIndex = allTasksSorted.findIndex(item => item.taskId === taskId);
+      
+      // If there is a next task (regardless of completion status), move to it
+      if (currentIndex >= 0 && currentIndex < allTasksSorted.length - 1) {
+        const nextTask = allTasksSorted[currentIndex + 1];
+        console.log(`Moving to next sequential task ${nextTask.taskId} after completing ${taskId}`);
+        setActiveTaskId(nextTask.taskId);
       }
     } catch (error) {
       console.error("Failed to complete task:", error);
