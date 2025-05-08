@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Pause, Play, RotateCcw } from 'lucide-react';
 import { TaskTimerState } from '@/hooks/useTimerSystem';
 import useSound from 'use-sound';
-import { timerCompleteSound } from '@/assets/sounds/timer-complete';
+import timerCompleteSound from '@/assets/sounds/timer-complete';
 
 interface TimerDisplayProps {
   task: {

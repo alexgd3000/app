@@ -98,6 +98,13 @@ export default function TaskTimer({
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
       
+      // Invalidate the specific assignment's tasks to update the UI in the Planner tab
+      const taskAssignmentId = data.task.assignmentId;
+      if (taskAssignmentId) {
+        console.log(`Invalidating tasks for assignment ${taskAssignmentId}`);
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${taskAssignmentId}/tasks`] });
+      }
+      
       // Call the parent component's onComplete callback
       onComplete();
     },
@@ -287,6 +294,13 @@ export default function TaskTimer({
       
       // Force refresh the current task data
       queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}`] });
+      
+      // Invalidate the assignment tasks to update the UI in the Planner tab
+      const taskAssignmentId = data.task.assignmentId;
+      if (taskAssignmentId) {
+        console.log(`Invalidating tasks for assignment ${taskAssignmentId} after timer reset`);
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${taskAssignmentId}/tasks`] });
+      }
     },
     onError: (error: Error) => {
       console.error("Error resetting timer:", error);
@@ -361,6 +375,13 @@ export default function TaskTimer({
       // Invalidate all relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      
+      // Invalidate the specific assignment's tasks to update the UI in the Planner tab
+      const taskAssignmentId = data.task.assignmentId;
+      if (taskAssignmentId) {
+        console.log(`Invalidating tasks for assignment ${taskAssignmentId} after undo completion`);
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${taskAssignmentId}/tasks`] });
+      }
       
       // Call the parent component's onComplete callback to update the UI
       onComplete();
