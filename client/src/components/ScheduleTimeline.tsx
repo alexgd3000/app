@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@shared/schema";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import TaskTimer from "./TaskTimer";
 
 interface ScheduleTimelineProps {
   isLoading: boolean;
@@ -26,6 +27,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const [todaysDueTasksTime, setTodaysDueTasksTime] = useState<number>(0);
   const [unscheduledTaskDetails, setUnscheduledTaskDetails] = useState<{ id: number; description: string; assignmentTitle: string; timeAllocation: number }[]>([]);
   const [showWarning, setShowWarning] = useState<boolean>(false);
+  const [currentTask, setCurrentTask] = useState<any | null>(null);
   
   // Calculate total minutes from hours and minutes inputs
   const getTotalMinutes = (): number | undefined => {
@@ -192,6 +194,36 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
+
+  // Find the current task in progress
+  useEffect(() => {
+    if (!isLoading && scheduleData && scheduleData.length > 0) {
+      const now = new Date();
+      // Find the first task that's in progress
+      const inProgressTask = scheduleData.find(item => {
+        const start = new Date(item.startTime);
+        const end = new Date(item.endTime);
+        return !item.completed && start <= now && end >= now;
+      });
+      
+      if (inProgressTask) {
+        setCurrentTask(inProgressTask);
+      } else {
+        // If no task in progress, find the next upcoming task
+        const nextTask = scheduleData
+          .filter(item => !item.completed)
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
+        
+        if (nextTask) {
+          setCurrentTask(nextTask);
+        } else {
+          setCurrentTask(null);
+        }
+      }
+    } else {
+      setCurrentTask(null);
+    }
+  }, [isLoading, scheduleData]);
   
   return (
     <Card className="mt-6">
@@ -281,14 +313,18 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               {/* Unscheduled task details */}
               {unscheduledTaskDetails.length > 0 && (
                 <div className="mt-4 mb-1">
-                  <h4 className="text-sm font-medium text-amber-800 mb-2">Tasks that couldn't be scheduled:</h4>
+                  <h4 className="text-sm font-medium text-amber-800 mb-2">Tasks due today that couldn't be scheduled:</h4>
                   <ul className="text-sm text-amber-700 space-y-1">
-                    {unscheduledTaskDetails.map(task => (
-                      <li key={task.id} className="flex justify-between">
-                        <span className="font-medium">{task.assignmentTitle}: {task.description}</span>
-                        <span>{formatMinutesToHours(task.timeAllocation)}</span>
-                      </li>
-                    ))}
+                    {unscheduledTaskDetails
+                      // Only show tasks that don't have "(future)" in their title
+                      .filter(task => !task.assignmentTitle.includes("(future)"))
+                      .map(task => (
+                        <li key={task.id} className="flex justify-between">
+                          <span className="font-medium">{task.assignmentTitle}: {task.description}</span>
+                          <span>{formatMinutesToHours(task.timeAllocation)}</span>
+                        </li>
+                      ))
+                    }
                   </ul>
                 </div>
               )}
@@ -298,6 +334,27 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       )}
       
       <CardContent className="px-6 py-5">
+        {/* Task Timer Section - Only show when we have a current task */}
+        {currentTask && scheduleData.length > 0 && (
+          <div className="mb-6">
+            <TaskTimer
+              scheduleItemId={currentTask.id}
+              taskId={currentTask.taskId}
+              taskDescription={currentTask.task ? currentTask.task.description : "Unknown task"}
+              assignmentTitle={currentTask.assignment ? currentTask.assignment.title : "Unknown assignment"}
+              startTime={currentTask.startTime}
+              endTime={currentTask.endTime}
+              duration={Math.round((new Date(currentTask.endTime).getTime() - new Date(currentTask.startTime).getTime()) / (1000 * 60))}
+              isCompleted={currentTask.completed}
+              onComplete={() => {
+                // Force refresh the schedule
+                queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+                onRefresh();
+              }}
+            />
+          </div>
+        )}
+      
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
