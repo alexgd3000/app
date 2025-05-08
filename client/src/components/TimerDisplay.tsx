@@ -187,20 +187,6 @@ export default function TimerDisplay({
             </Button>
           </div>
         </div>
-        
-        {/* Undo complete button - only shown when task is completed */}
-        {timerState.isCompleted && (
-          <div className="flex justify-center mt-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs h-7 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
-              onClick={onUndo}
-            >
-              Undo Complete
-            </Button>
-          </div>
-        )}
       </div>
     </Card>
   );
