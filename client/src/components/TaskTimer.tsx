@@ -83,6 +83,12 @@ export default function TaskTimer({
       };
     },
     onSuccess: (data) => {
+      // Clear local storage saved progress when we complete a task
+      // since we've now properly saved the state to the server
+      const progressKey = `timer_progress_${taskId}`;
+      localStorage.removeItem(progressKey);
+      console.log(`Cleared saved progress for task ${taskId} from local storage (task completed)`);
+      
       toast({
         title: "Task completed",
         description: `Great job! Task marked as completed (${data.timeSpentMinutes} mins spent).`,
@@ -104,8 +110,25 @@ export default function TaskTimer({
     }
   });
 
+  // Save current timer progress before leaving a task
+  const saveTimerProgressToStorage = () => {
+    if (taskId) {
+      // Store the current time elapsed for this task in local storage
+      const progressKey = `timer_progress_${taskId}`;
+      console.log(`Saving timer progress for task ${taskId}: ${timeElapsed} seconds`);
+      
+      // Only save if there's actual progress (non-zero)
+      if (timeElapsed > 0) {
+        localStorage.setItem(progressKey, timeElapsed.toString());
+      }
+    }
+  };
+  
   // Update time elapsed when a task is first loaded or when taskId changes
   useEffect(() => {
+    // First, save the current task progress before switching
+    saveTimerProgressToStorage();
+    
     // Reset active state when switching tasks
     setIsActive(false);
     
@@ -124,9 +147,25 @@ export default function TaskTimer({
           // Important: handle timeSpent explicitly to account for zero values
           // Be very explicit about the value we're using to avoid conversion issues
           const timeSpentMinutes = taskData.timeSpent === 0 ? 0 : (taskData.timeSpent || 0);
-          const timeSpentSeconds = timeSpentMinutes * 60;
           
-          console.log(`Setting time elapsed to: ${timeSpentSeconds} seconds (${timeSpentMinutes} minutes)`);
+          // First, check if we have a saved progress in local storage
+          const progressKey = `timer_progress_${taskId}`;
+          const savedProgress = localStorage.getItem(progressKey);
+          let timeSpentSeconds = timeSpentMinutes * 60;
+          
+          // If we have locally saved progress that's greater than the server value, use that instead
+          if (savedProgress) {
+            const savedProgressSeconds = parseInt(savedProgress, 10);
+            console.log(`Found saved progress for task ${taskId}: ${savedProgressSeconds} seconds`);
+            
+            // Choose the larger value between saved progress and server value
+            if (savedProgressSeconds > timeSpentSeconds) {
+              console.log(`Using saved progress (${savedProgressSeconds}s) instead of server value (${timeSpentSeconds}s)`);
+              timeSpentSeconds = savedProgressSeconds;
+            }
+          }
+          
+          console.log(`Setting time elapsed to: ${timeSpentSeconds} seconds (${Math.round(timeSpentSeconds / 60)} minutes)`);
           
           // Always explicitly set the time elapsed
           setTimeElapsed(timeSpentSeconds);
@@ -144,8 +183,13 @@ export default function TaskTimer({
       }
     };
     
-    // Always reset and fetch task details when switching tasks
+    // Always fetch task details when switching tasks
     fetchTaskDetails();
+    
+    // Save progress when component unmounts or task changes
+    return () => {
+      saveTimerProgressToStorage();
+    };
   }, [taskId]);
   
   // Start timer if task is active and save progress periodically
@@ -258,6 +302,11 @@ export default function TaskTimer({
       setIsActive(false);
       setTimeElapsed(0);
       setLastCompletedState(null);
+      
+      // Also clear the local storage saved progress
+      const progressKey = `timer_progress_${taskId}`;
+      localStorage.removeItem(progressKey);
+      console.log(`Cleared saved progress for task ${taskId} from local storage`);
       
       toast({
         title: "Timer reset",

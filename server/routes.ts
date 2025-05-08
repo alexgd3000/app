@@ -224,7 +224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Ensure all tasks have id and order properties
         const validTasks = tasksToReorder.map((task: { id: string | number, order?: number }, index: number) => {
-          const taskId = parseInt(task.id, 10);
+          // Convert task ID to number for consistent handling
+          const taskId = typeof task.id === 'string' ? parseInt(task.id, 10) : task.id;
           if (isNaN(taskId)) {
             throw new Error(`Task at index ${index} has invalid ID: ${task.id}`);
           }
