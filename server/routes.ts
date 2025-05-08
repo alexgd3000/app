@@ -214,9 +214,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log("Processing valid tasks:", JSON.stringify(validTasks));
         
+        // Debug all existing tasks
+        const allCurrentTasks = Array.from((storage as any).tasks.entries());
+        console.log("All tasks in system:", JSON.stringify(allCurrentTasks));
+        
         // Try to verify all tasks exist before reordering
         for (const task of validTasks) {
           const existingTask = await storage.getTask(task.id);
+          console.log(`Looking for task ID ${task.id}, found:`, existingTask);
           if (!existingTask) {
             return res.status(404).json({ 
               message: `Task with ID ${task.id} not found` 

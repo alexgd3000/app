@@ -307,10 +307,21 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     const taskToMoveUp = updatedTasks[taskIndex];
     const taskToMoveDown = updatedTasks[taskIndex - 1];
     
-    // Simple swap of just the two tasks' orders
+    console.log("Task details - taskToMoveUp:", taskToMoveUp);
+    console.log("Task details - taskToMoveDown:", taskToMoveDown);
+    
+    // Simple swap of just the two tasks' orders - include assignmentId from each task
     const simplifiedPayload = [
-      { id: taskToMoveUp.id, order: taskIndex - 1 },
-      { id: taskToMoveDown.id, order: taskIndex }
+      { 
+        id: taskToMoveUp.id, 
+        order: taskIndex - 1,
+        assignmentId: taskToMoveUp.assignmentId 
+      },
+      { 
+        id: taskToMoveDown.id, 
+        order: taskIndex,
+        assignmentId: taskToMoveDown.assignmentId 
+      }
     ];
     
     console.log("Simplified reorder payload:", simplifiedPayload);
@@ -338,10 +349,21 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     const taskToMoveDown = updatedTasks[taskIndex];
     const taskToMoveUp = updatedTasks[taskIndex + 1];
     
-    // Simple swap of just the two tasks' orders
+    console.log("Task details - taskToMoveDown:", taskToMoveDown);
+    console.log("Task details - taskToMoveUp:", taskToMoveUp);
+    
+    // Simple swap of just the two tasks' orders - include assignmentId from each task
     const simplifiedPayload = [
-      { id: taskToMoveDown.id, order: taskIndex + 1 },
-      { id: taskToMoveUp.id, order: taskIndex }
+      { 
+        id: taskToMoveDown.id, 
+        order: taskIndex + 1,
+        assignmentId: taskToMoveDown.assignmentId 
+      },
+      { 
+        id: taskToMoveUp.id, 
+        order: taskIndex,
+        assignmentId: taskToMoveUp.assignmentId 
+      }
     ];
     
     console.log("Simplified reorder payload:", simplifiedPayload);
