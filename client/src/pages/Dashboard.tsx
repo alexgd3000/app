@@ -27,13 +27,23 @@ export default function Dashboard() {
     queryKey: ['/api/assignments/incomplete'],
   });
 
-  const { 
-    data: scheduleData = [], 
-    isLoading: scheduleLoading,
-    refetch: refetchSchedule
-  } = useQuery({
-    queryKey: ['/api/schedule', format(new Date(), 'yyyy-MM-dd')],
-  });
+  // We'll start with an empty schedule and only populate it when the user clicks on "Generate Plan"
+  const [scheduleData, setScheduleData] = useState<any[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+
+  // This function will be used to refresh the schedule data when needed
+  const refetchSchedule = async () => {
+    setScheduleLoading(true);
+    try {
+      const response = await fetch('/api/schedule');
+      const data = await response.json();
+      setScheduleData(data);
+    } catch (error) {
+      console.error('Failed to fetch schedule:', error);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
 
   // Effect to find if there's an active assignment for the timer
   useEffect(() => {

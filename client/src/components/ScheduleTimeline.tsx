@@ -73,6 +73,9 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     
     return (hours * 60) + minutes;
   };
+  
+  // Check if schedule is empty - use this to show the initial state
+  const isScheduleEmpty = scheduleData.length === 0;
 
   const generateScheduleMutation = useMutation({
     mutationFn: async () => {
