@@ -57,58 +57,7 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     enabled: !!assignmentId,
   });
 
-  // Update task order
-  const reorderMutation = useMutation({
-    mutationFn: async (tasks: {id: number, order: number}[]) => {
-      // Log the tasks payload for debugging
-      console.log("Reordering tasks:", tasks);
-      
-      try {
-        // Use direct fetch with more detailed debugging
-        const url = "/api/tasks/reorder";
-        console.log(`Making request to ${url}`);
-        
-        const response = await fetch(url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ tasks: tasks })
-        });
-        
-        if (!response.ok) {
-          console.error(`Server responded with status: ${response.status}`);
-          const errorText = await response.text();
-          console.error(`Error response: ${errorText}`);
-          throw new Error(`Server error: ${response.status} - ${errorText || 'Unknown error'}`);
-        }
-        
-        return response.json();
-      } catch (error: any) {
-        console.error("Error during reordering:", error);
-        // Improve error message by parsing the response if possible
-        let errorMessage = "Failed to reorder tasks";
-        
-        if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        throw new Error(errorMessage);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        queryKey: [`/api/assignments/${assignmentId}/tasks`] 
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to reorder tasks",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  // We use individual task updates for reordering instead of bulk reordering
 
   // Create task form
   const addTaskForm = useForm<TaskFormValues>({
@@ -310,32 +259,36 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     console.log("Task details - taskToMoveUp:", taskToMoveUp);
     console.log("Task details - taskToMoveDown:", taskToMoveDown);
     
-    // Simple swap of just the two tasks' orders - include assignmentId from each task
-    const simplifiedPayload = [
-      { 
-        id: taskToMoveUp.id, 
-        order: taskIndex - 1,
-        assignmentId: taskToMoveUp.assignmentId 
-      },
-      { 
-        id: taskToMoveDown.id, 
-        order: taskIndex,
-        assignmentId: taskToMoveDown.assignmentId 
-      }
-    ];
-    
-    console.log("Simplified reorder payload:", simplifiedPayload);
-    
-    // Call the reorder API with just the two tasks that need to change
-    reorderMutation.mutate(simplifiedPayload);
-    
-    // Update local state to show immediate change without waiting for refetch
+    // Update local state immediately for better UX
     const newTasks = [...tasks];
     // Swap the tasks
     const temp = newTasks[taskIndex];
     newTasks[taskIndex] = newTasks[taskIndex - 1];
     newTasks[taskIndex - 1] = temp;
     setTasks(newTasks);
+    
+    // Use individual task update instead of bulk reordering
+    // Update the first task
+    updateTaskMutation.mutate({
+      id: taskToMoveUp.id,
+      assignmentId: taskToMoveUp.assignmentId,
+      description: taskToMoveUp.description,
+      timeAllocation: taskToMoveUp.timeAllocation,
+      order: taskIndex - 1,
+      completed: taskToMoveUp.completed,
+      timeSpent: taskToMoveUp.timeSpent || 0
+    });
+    
+    // Update the second task
+    updateTaskMutation.mutate({
+      id: taskToMoveDown.id,
+      assignmentId: taskToMoveDown.assignmentId,
+      description: taskToMoveDown.description,
+      timeAllocation: taskToMoveDown.timeAllocation,
+      order: taskIndex,
+      completed: taskToMoveDown.completed,
+      timeSpent: taskToMoveDown.timeSpent || 0
+    });
   };
   
   // Move task down in order
@@ -352,32 +305,36 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     console.log("Task details - taskToMoveDown:", taskToMoveDown);
     console.log("Task details - taskToMoveUp:", taskToMoveUp);
     
-    // Simple swap of just the two tasks' orders - include assignmentId from each task
-    const simplifiedPayload = [
-      { 
-        id: taskToMoveDown.id, 
-        order: taskIndex + 1,
-        assignmentId: taskToMoveDown.assignmentId 
-      },
-      { 
-        id: taskToMoveUp.id, 
-        order: taskIndex,
-        assignmentId: taskToMoveUp.assignmentId 
-      }
-    ];
-    
-    console.log("Simplified reorder payload:", simplifiedPayload);
-    
-    // Call the reorder API with just the two tasks that need to change
-    reorderMutation.mutate(simplifiedPayload);
-    
-    // Update local state to show immediate change without waiting for refetch
+    // Update local state immediately for better UX
     const newTasks = [...tasks];
     // Swap the tasks
     const temp = newTasks[taskIndex];
     newTasks[taskIndex] = newTasks[taskIndex + 1];
     newTasks[taskIndex + 1] = temp;
     setTasks(newTasks);
+    
+    // Use individual task update instead of bulk reordering
+    // Update the first task
+    updateTaskMutation.mutate({
+      id: taskToMoveDown.id,
+      assignmentId: taskToMoveDown.assignmentId,
+      description: taskToMoveDown.description,
+      timeAllocation: taskToMoveDown.timeAllocation,
+      order: taskIndex + 1,
+      completed: taskToMoveDown.completed,
+      timeSpent: taskToMoveDown.timeSpent || 0
+    });
+    
+    // Update the second task
+    updateTaskMutation.mutate({
+      id: taskToMoveUp.id,
+      assignmentId: taskToMoveUp.assignmentId,
+      description: taskToMoveUp.description,
+      timeAllocation: taskToMoveUp.timeAllocation,
+      order: taskIndex,
+      completed: taskToMoveUp.completed,
+      timeSpent: taskToMoveUp.timeSpent || 0
+    });
   };
 
   // Calculate total time
