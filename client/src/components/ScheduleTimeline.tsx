@@ -393,37 +393,41 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
                 
-                // Automatically move to the next task when a task is completed
-                moveToNextTask();
                 onRefresh();
               }}
+              onPrevious={moveToPreviousTask}
+              onNext={moveToNextTask}
             />
             
-            {/* Task navigation controls */}
-            <div className="flex justify-between mt-4">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={moveToPreviousTask}
-                className="flex items-center"
-              >
-                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Previous Task
-              </Button>
+            {/* Task details section */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Today's Progress</h4>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {scheduleData.filter(item => item.completed).length} of {scheduleData.length} tasks completed
+                  </p>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-2">
+                    Task {scheduleData.findIndex(item => item.id === currentTask.id) + 1} of {scheduleData.length}
+                  </span>
+                  <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <path d="M8 12L11 15L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
               
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={moveToNextTask}
-                className="flex items-center"
-              >
-                Next Task
-                <svg className="h-4 w-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 12H20M20 12L14 6M20 12L14 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Button>
+              <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full" 
+                  style={{ 
+                    width: `${(scheduleData.filter(item => item.completed).length / scheduleData.length) * 100}%` 
+                  }}
+                ></div>
+              </div>
             </div>
           </div>
         )}

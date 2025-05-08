@@ -271,7 +271,15 @@ export default function TaskTimer({
             variant="outline"
             className="rounded-full h-9 w-9"
             title="Previous task"
-            onClick={undoCompleteTask}
+            onClick={() => {
+              if (isCompleted) {
+                // If current task is completed, undo its completion
+                undoCompleteTask();
+              } else if (onPrevious) {
+                // Otherwise, navigate to the previous task
+                onPrevious();
+              }
+            }}
             disabled={undoCompleteMutation.isPending}
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -294,14 +302,22 @@ export default function TaskTimer({
             )}
           </Button>
           
-          {/* Next task button (Mark complete) */}
+          {/* Next task button (Mark complete and advance) */}
           <Button
             size="icon"
             variant="outline"
             className="rounded-full h-9 w-9"
             title="Next task (Mark complete)"
-            onClick={completeTask}
-            disabled={markCompletedMutation.isPending || isCompleted}
+            onClick={() => {
+              if (!isCompleted) {
+                // If not completed, mark as complete
+                completeTask();
+              } else if (onNext) {
+                // If already completed, go to next task
+                onNext();
+              }
+            }}
+            disabled={markCompletedMutation.isPending}
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M13.0502 2.74963C13.0502 2.44573 12.8039 2.19971 12.5002 2.19971C12.1965 2.19971 11.9502 2.44573 11.9502 2.74963V7.24963L1.95022 2.24966C1.71939 2.11496 1.43739 2.12833 1.21758 2.28385C0.997759 2.43938 0.916107 2.70401 1.01371 2.93814L1.01413 2.93902C1.01741 2.94587 1.02113 2.95267 1.02504 2.95938C1.02859 2.96563 1.03223 2.97186 1.03588 2.97803L1.95022 4.74963V10.2496L1.03588 12.0212C1.03223 12.0274 1.02859 12.0336 1.02504 12.0399C1.02113 12.0466 1.01741 12.0534 1.01413 12.0602L1.01371 12.0611C0.916107 12.2952 0.997759 12.5599 1.21758 12.7154C1.43739 12.8709 1.71939 12.8843 1.95022 12.7496L11.9502 7.74963V12.2496C11.9502 12.5535 12.1965 12.7996 12.5002 12.7996C12.8039 12.7996 13.0502 12.5535 13.0502 12.2496V2.74963Z" fill="currentColor" />
