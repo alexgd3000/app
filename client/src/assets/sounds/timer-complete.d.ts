@@ -1,3 +1,4 @@
-declare const timerCompleteSound: string;
-export default timerCompleteSound;
-export { timerCompleteSound };
+declare module '@/assets/sounds/timer-complete' {
+  const soundUrl: string;
+  export default soundUrl;
+}

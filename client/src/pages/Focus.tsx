@@ -1,43 +1,8 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import ScheduleTimeline from "@/components/ScheduleTimeline";
-import { Assignment } from "@shared/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import SimpleFocusScheduler from "@/components/SimpleFocusScheduler";
 
 export default function Focus() {
-  const [scheduleData, setScheduleData] = useState<any[]>([]);
-  const [scheduleLoading, setScheduleLoading] = useState(false);
-  
-  const { 
-    data: assignments = [], 
-    isLoading: assignmentsLoading,
-  } = useQuery<Assignment[]>({
-    queryKey: ['/api/assignments/incomplete'],
-  });
-
-  // This function will be used to refresh the schedule data when needed
-  const refetchSchedule = async () => {
-    setScheduleLoading(true);
-    try {
-      const response = await fetch('/api/schedule');
-      const data = await response.json();
-      setScheduleData(data);
-    } catch (error) {
-      console.error('Failed to fetch schedule:', error);
-    } finally {
-      setScheduleLoading(false);
-    }
-  };
-
-  // Effect to fetch schedule data when the component mounts
-  useEffect(() => {
-    refetchSchedule();
-  }, []);
-
-  const refreshData = () => {
-    refetchSchedule();
-  };
-
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -47,14 +12,10 @@ export default function Focus() {
         </div>
         
         <div className="grid grid-cols-1 gap-6">
-          {/* Schedule Timer Section - Simplified */}
+          {/* Schedule Timer Section - Using our completely rewritten components */}
           <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              <ScheduleTimeline 
-                isLoading={scheduleLoading} 
-                scheduleData={scheduleData} 
-                onRefresh={refreshData}
-              />
+            <CardContent className="p-6">
+              <SimpleFocusScheduler />
             </CardContent>
           </Card>
         </div>
