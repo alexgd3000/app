@@ -142,7 +142,7 @@ export default function TimerDisplay({
               {timerState.isActive ? (
                 <><Pause className="h-3 w-3 mr-1" /> Pause</>
               ) : (
-                <><Play className="h-3 w-3 mr-1" /> Play</>
+                <><Play className="h-3 w-3 mr-1" /> Start</>
               )}
             </Button>
             
