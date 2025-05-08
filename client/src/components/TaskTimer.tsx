@@ -209,20 +209,34 @@ export default function TaskTimer({
   // Reset timer mutation to reset the progress in the database
   const resetTimerMutation = useMutation({
     mutationFn: async () => {
-      // Reset the task timeSpent in database to 0
+      console.log("Resetting timer for task:", taskId);
+      
+      // Store the value we're trying to set to help with debugging
+      const valueToSet = 0;
+      console.log("Setting timeSpent to:", valueToSet);
+      
+      // Reset the task timeSpent in database to 0 - use "0" string to ensure it's treated as explicit zero
       const taskResponse = await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
         { 
-          timeSpent: 0 
+          timeSpent: "0" // Use string "0" to ensure it's properly handled by the server
         }
       );
       
+      const responseData = await taskResponse.json();
+      console.log("Reset response data:", responseData);
+      
       return {
-        task: await taskResponse.json()
+        task: responseData
       };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Reset success, returned task:", data.task);
+      
+      // Check the value that was actually set
+      console.log("Task timeSpent after reset:", data.task.timeSpent);
+      
       // Reset the UI timer state
       setIsActive(false);
       setTimeElapsed(0);
@@ -235,8 +249,12 @@ export default function TaskTimer({
       
       // Refresh assignments to show the updated timeSpent
       queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      
+      // Force refresh the current task data
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}`] });
     },
     onError: (error: Error) => {
+      console.error("Error resetting timer:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -277,8 +295,9 @@ export default function TaskTimer({
         `/api/tasks/${taskId}`,
         { 
           completed: false,
-          // Only update the time spent if we have a stored value
-          ...(lastCompletedState ? { timeSpent: Math.max(Math.round(lastCompletedState.timeSpent / 60), 1) } : {})
+          // Only update the time spent if we have a stored value 
+          // Don't enforce minimum - preserve exact time (converted to minutes)
+          ...(lastCompletedState ? { timeSpent: Math.round(lastCompletedState.timeSpent / 60) } : {})
         }
       );
       

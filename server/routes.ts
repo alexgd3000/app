@@ -167,8 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (body.timeAllocation !== undefined) {
         body.timeAllocation = Math.round(parseFloat(body.timeAllocation));
       }
+      
+      // Special handling for timeSpent to allow true zero values
       if (body.timeSpent !== undefined) {
-        body.timeSpent = Math.round(parseFloat(body.timeSpent));
+        // Check if it's specifically set to 0 or "0"
+        if (body.timeSpent === 0 || body.timeSpent === "0") {
+          body.timeSpent = 0; // Explicitly set to 0
+        } else {
+          body.timeSpent = Math.round(parseFloat(body.timeSpent));
+        }
       }
       
       const updated = await storage.updateTask(id, body);
