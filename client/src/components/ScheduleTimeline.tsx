@@ -361,23 +361,29 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 <div className="flex items-center">
                   <span className="text-sm text-gray-500 mr-2">Available:</span>
                   <div className="flex space-x-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="Hours"
-                      className="w-[70px]"
-                      value={availableHours}
-                      onChange={(e) => setAvailableHours(e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      max="59"
-                      placeholder="Mins"
-                      className="w-[60px]"
-                      value={availableMinutes}
-                      onChange={(e) => setAvailableMinutes(e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Hours"
+                        className="w-[90px] pl-10"
+                        value={availableHours}
+                        onChange={(e) => setAvailableHours(e.target.value)}
+                      />
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Hours</span>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="59"
+                        placeholder="Mins"
+                        className="w-[90px] pl-10"
+                        value={availableMinutes}
+                        onChange={(e) => setAvailableMinutes(e.target.value)}
+                      />
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Mins</span>
+                    </div>
                   </div>
                 </div>
                 
