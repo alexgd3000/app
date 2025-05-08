@@ -280,7 +280,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   };
   
   // Undo task completion
-  const undoTaskCompletion = async (taskId: number, scheduleItemId: number) => {
+  const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
     if (!timerStates[taskId]) return;
     
     try {
@@ -309,8 +309,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Set this as the active task
-      setActiveTaskId(taskId);
+      // Only set as active if requested (now optional)
+      if (makeActive) {
+        setActiveTaskId(taskId);
+      }
       
       // Notify parent
       onTimerComplete(taskId);

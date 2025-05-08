@@ -62,58 +62,21 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     
     const previousTask = sortedSchedule[currentTaskIndex - 1];
     
-    // Log the current task timer state before switching
-    if (currentTask && timerStates[currentTask.taskId]) {
-      console.log('Current task timer state before going back:', 
-        { taskId: currentTask.taskId, timeElapsed: timerStates[currentTask.taskId].timeElapsed }
-      );
+    // Log the current and previous task states for debugging
+    console.log('Current task:', currentTask.taskId, 'Previous task:', previousTask.taskId);
+    
+    // Mark the current task as incomplete (if completed) and always switch to previous task
+    if (currentTask && currentTask.completed) {
+      console.log('Marking current task as incomplete:', currentTask.taskId);
+      // Mark current task as incomplete but don't make it active
+      undoTaskCompletion(currentTask.taskId, currentTask.id, false);
     }
     
-    // Log the previous task timer state before switching
-    if (timerStates[previousTask.taskId]) {
-      console.log('Previous task timer state before going back:',
-        { taskId: previousTask.taskId, timeElapsed: timerStates[previousTask.taskId].timeElapsed }
-      );
-    }
+    // Then always switch to the previous task in the sequence
+    console.log('Switching to previous task:', previousTask.taskId);
+    switchToTask(previousTask.taskId);
     
-    // Check if all tasks are completed
-    const allTasksCompleted = sortedSchedule.every(task => task.completed);
-    
-    // If all tasks are completed, mark both the current and previous tasks as incomplete
-    if (allTasksCompleted) {
-      console.log('All tasks completed, marking current and previous tasks as incomplete');
-      if (currentTask) {
-        console.log('Undoing completion of current task:', currentTask.taskId);
-        undoTaskCompletion(currentTask.taskId, currentTask.id);
-      }
-      
-      console.log('Undoing completion of previous task:', previousTask.taskId);
-      undoTaskCompletion(previousTask.taskId, previousTask.id);
-    }
-    // If we're on the last task and it's completed, undo its completion first
-    else if (currentTask && currentTask.completed && currentTaskIndex === sortedSchedule.length - 1) {
-      console.log('Undoing completion of current (last) task:', currentTask.taskId);
-      undoTaskCompletion(currentTask.taskId, currentTask.id);
-      
-      // Now handle the previous task
-      if (previousTask.completed) {
-        console.log('Undoing completion of previous task:', previousTask.taskId);
-        undoTaskCompletion(previousTask.taskId, previousTask.id);
-      } else {
-        console.log('Switching to previous task:', previousTask.taskId);
-        switchToTask(previousTask.taskId);
-      }
-    }
-    // Regular case - handle previous task without changing current
-    else if (previousTask.completed) {
-      console.log('Undoing completion of previous task:', previousTask.taskId);
-      undoTaskCompletion(previousTask.taskId, previousTask.id);
-    } else {
-      console.log('Switching to previous task:', previousTask.taskId);
-      switchToTask(previousTask.taskId);
-    }
-    
-    // Log the states after switching
+    // Log the states after switching for debugging
     setTimeout(() => {
       console.log('Timer states after going back:', timerStates);
     }, 100);
@@ -240,8 +203,13 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent triggering the parent div's onClick
                     if (item.completed) {
-                      // Uncomplete the task
-                      undoTaskCompletion(item.taskId, item.id);
+                      // Uncomplete the task without making it active
+                      undoTaskCompletion(item.taskId, item.id, false);
+                      
+                      // Keep the current task active
+                      if (currentTask) {
+                        switchToTask(currentTask.taskId);
+                      }
                     } else {
                       // Complete the task and move to next task
                       switchToTask(item.taskId); // First switch to this task
