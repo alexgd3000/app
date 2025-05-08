@@ -485,8 +485,11 @@ export default function TaskTimer({
         <div className="flex justify-center mb-3 border-b pb-3">
           <Button
             size="sm"
-            variant={isCompleted ? "destructive" : "default"}
-            className="w-full mx-1"
+            variant="outline"
+            className={`w-full mx-1 ${isCompleted ? 
+              'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-200' : 
+              'bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 border-green-200'
+            }`}
             onClick={isCompleted ? () => undoCompleteMutation.mutate() : () => markCompletedMutation.mutate()}
             disabled={markCompletedMutation.isPending || undoCompleteMutation.isPending}
             title={isCompleted ? "Mark as not completed" : "Mark as completed"}

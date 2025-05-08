@@ -209,55 +209,11 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
 
   return (
     <Card className="mt-6">
-      <CardHeader className="px-6 py-5 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
+      <CardHeader className="px-6 py-4 border-b border-gray-200">
+        <div>
+          {/* First row: Title and Generate button */}
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-medium text-gray-900">Today's Schedule</h2>
-            <p className="mt-1 text-sm text-gray-500">Your optimized work plan for completing all assignments.</p>
-          </div>
-          
-          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:space-x-3 items-start sm:items-center">
-            <div className="grid grid-cols-2 sm:flex sm:space-x-4 items-center gap-2">
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Available Time:</span>
-                <div className="flex space-x-2">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="Hours"
-                      className="w-[90px]"
-                      value={availableHours}
-                      onChange={(e) => setAvailableHours(e.target.value)}
-                    />
-                  </div>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="59"
-                      placeholder="Mins"
-                      className="w-[90px]"
-                      value={availableMinutes}
-                      onChange={(e) => setAvailableMinutes(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Start Time:</span>
-                <div className="relative">
-                  <Input 
-                    type="time"
-                    className="w-[110px]"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            
             <Button 
               onClick={() => generateScheduleMutation.mutate()} 
               disabled={generateScheduleMutation.isPending}
@@ -275,6 +231,52 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 </>
               )}
             </Button>
+          </div>
+          
+          {/* Second row: Description and inputs */}
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 mr-4">Your optimized work plan for completing all assignments.</p>
+            
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Available Time:</span>
+                <div className="flex space-x-1">
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Hours"
+                      className="w-[70px]"
+                      value={availableHours}
+                      onChange={(e) => setAvailableHours(e.target.value)}
+                    />
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="Mins"
+                      className="w-[70px]"
+                      value={availableMinutes}
+                      onChange={(e) => setAvailableMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Start Time:</span>
+                <div className="relative">
+                  <Input 
+                    type="time"
+                    className="w-[100px]"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </CardHeader>
