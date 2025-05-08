@@ -52,15 +52,28 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       const taskId = item.taskId;
       const savedState = savedStates[taskId];
       
+      // Always preserve the elapsed time from saved state if it exists
+      // Otherwise use 0 or the current timer state if it exists
+      const currentTimerState = timerStates[taskId];
+      const timeElapsed = savedState?.timeElapsed || currentTimerState?.timeElapsed || 0;
+      
       newTimerStates[taskId] = {
         taskId,
         assignmentId: item.task?.assignmentId || 0,
-        // Important: Preserve the elapsed time from saved state
-        timeElapsed: savedState?.timeElapsed || 0,
+        timeElapsed: timeElapsed,
         isActive: false, // Always start inactive
         isCompleted: item.completed || false,
         lastUpdated: Date.now()
       };
+    });
+    
+    // Also include any saved timer states for tasks that might not be in the current scheduleData
+    // This ensures we don't lose progress for tasks when switching between them
+    Object.keys(savedStates).forEach(taskIdStr => {
+      const taskId = parseInt(taskIdStr);
+      if (!newTimerStates[taskId] && !isNaN(taskId)) {
+        newTimerStates[taskId] = savedStates[taskId];
+      }
     });
     
     console.log('Setting timer states with preserved time:', newTimerStates);
@@ -356,6 +369,9 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     
     console.log(`Switching to task ${taskId} with current elapsed time:`, timerStates[taskId].timeElapsed);
     
+    // Store the current state of all timers before switching
+    const currentTimerStates = {...timerStates};
+    
     // If there's a currently active timer, pause it
     if (activeTaskId && activeTaskId !== taskId && timerStates[activeTaskId]?.isActive) {
       console.log(`Pausing previous active task ${activeTaskId} with elapsed time:`, timerStates[activeTaskId].timeElapsed);
@@ -365,6 +381,17 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     // Simply make the task active without resetting its progress
     // This is critical - we just change which task is active without modifying its timeElapsed
     setActiveTaskId(taskId);
+    
+    // Ensure we're not losing any timer states during the switch
+    setTimerStates(prev => {
+      // Make sure we keep all timers with their current elapsed times
+      Object.keys(currentTimerStates).forEach(id => {
+        if (!prev[parseInt(id)]) {
+          prev[parseInt(id)] = currentTimerStates[parseInt(id)];
+        }
+      });
+      return prev;
+    });
     
     // Save timer states to ensure we persist the current progress
     saveTimerStates();
