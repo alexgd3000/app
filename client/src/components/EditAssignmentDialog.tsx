@@ -54,6 +54,11 @@ const editAssignmentSchema = insertAssignmentSchema
     completed: z.boolean().optional(),
     createdAt: z.date().optional(),
     timeAvailable: z.number().optional(),
+    // Make estimatedTime accept a string that will be converted to a number
+    estimatedTime: z.union([
+      z.string().transform((val) => parseInt(val, 10) || 0),
+      z.number()
+    ]),
   })
 
 type EditAssignmentFormValues = z.infer<typeof editAssignmentSchema>;

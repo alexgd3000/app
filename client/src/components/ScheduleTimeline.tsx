@@ -85,8 +85,12 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       if (data.notScheduled && data.notScheduled.length > 0) {
         setNotScheduledTasks(data.notScheduled);
         
-        // Only show warning if tasks due today couldn't be scheduled
-        setShowWarning(todaysTasksUnscheduled > 0);
+        // Only show warning if tasks due today couldn't be scheduled AND
+        // the available time is less than the time required for today's due tasks
+        // This ensures we don't show warnings when available time equals required time
+        const availableTime = data.availableMinutes || 0;
+        const neededTime = data.todaysDueTasksTime || 0;
+        setShowWarning(todaysTasksUnscheduled > 0 && availableTime < neededTime);
       } else {
         setNotScheduledTasks([]);
         setShowWarning(false);
