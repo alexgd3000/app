@@ -70,6 +70,12 @@ export default function TaskTimerSystem({
   const currentTask = activeTaskId
     ? scheduleData.find(item => item.taskId === activeTaskId)
     : null;
+    
+  // If for some reason we can't find the current task by ID, use the first task in the schedule
+  if (activeTaskId && !currentTask && scheduleData.length > 0) {
+    console.log('Active task not found in schedule data - using first task as fallback');
+    switchToTask(scheduleData[0].taskId);
+  }
   
   // Get the current task index in the sorted schedule
   const currentTaskIndex = currentTask

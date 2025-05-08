@@ -57,12 +57,15 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       const currentTimerState = timerStates[taskId];
       const timeElapsed = savedState?.timeElapsed || currentTimerState?.timeElapsed || 0;
       
+      // Check if we already have an active task with this ID - if so, preserve its active state
+      const isCurrentlyActive = activeTaskId === taskId && currentTimerState?.isActive;
+      
       newTimerStates[taskId] = {
         taskId,
         assignmentId: item.task?.assignmentId || 0,
         timeElapsed: timeElapsed,
-        isActive: false, // Always start inactive
-        isCompleted: item.completed || false,
+        isActive: isCurrentlyActive || false, // Preserve active state if it's the current active task
+        isCompleted: item.completed || false, // Always use database value for completion
         lastUpdated: Date.now()
       };
     });
