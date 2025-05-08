@@ -6,7 +6,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Pencil } from "lucide-react";
+import { Pencil, CheckCircle } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import TaskItem from "@/components/TaskItem";
 import AddTaskForm from "@/components/AddTaskForm";
@@ -441,7 +441,55 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
               <p className="text-xs text-gray-500">{formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}</p>
             </div>
           </div>
-          {/* Schedule button removed as per request */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="ml-auto bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 border-green-200"
+            onClick={() => {
+              // Show confirmation dialog
+              const confirmed = window.confirm(`Mark "${assignment.title}" as complete? All tasks will be marked as complete and the assignment will be moved to the completed section.`);
+              
+              if (confirmed) {
+                // Call a different endpoint for completing the assignment
+                fetch(`/api/assignments/${assignment.id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ 
+                    completed: true,
+                    // Include original values for other required fields
+                    title: assignment.title,
+                    course: assignment.course,
+                    dueDate: assignment.dueDate,
+                    priority: assignment.priority,
+                    estimatedTime: assignment.estimatedTime,
+                  }),
+                }).then(() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+                });
+                
+                // Mark all tasks as completed
+                tasks.forEach(task => {
+                  if (!task.completed) {
+                    updateTaskMutation.mutate({
+                      id: task.id,
+                      data: { completed: true }
+                    });
+                  }
+                });
+                
+                // Show success message
+                toast({
+                  title: "Assignment completed",
+                  description: "Assignment and all its tasks have been marked as complete.",
+                });
+              }
+            }}
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            Complete Assignment
+          </Button>
         </div>
       </CardFooter>
     </Card>
