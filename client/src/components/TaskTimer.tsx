@@ -138,42 +138,39 @@ export default function TaskTimer({
     const fetchTaskDetails = async () => {
       try {
         console.log(`Fetching task details for task ID: ${taskId}`);
-        const response = await fetch(`/api/tasks/${taskId}`);
-        if (response.ok) {
-          const taskData = await response.json();
-          console.log(`Task data loaded:`, taskData);
-          
-          // Important: handle timeSpent explicitly to account for zero values
-          // Be very explicit about the value we're using to avoid conversion issues
-          const timeSpentMinutes = taskData.timeSpent === 0 ? 0 : (taskData.timeSpent || 0);
-          
-          // First, check if we have a saved progress in local storage
-          const progressKey = `timer_progress_${taskId}`;
-          const savedProgress = localStorage.getItem(progressKey);
-          let timeSpentSeconds = timeSpentMinutes * 60;
-          
-          // If we have saved progress in local storage, always use that instead of the server value
-          // This ensures the timer picks up from where it was left when the user navigated away
-          if (savedProgress !== null) {
-            const savedProgressSeconds = parseInt(savedProgress, 10);
-            console.log(`Found saved progress for task ${taskId}: ${savedProgressSeconds} seconds`);
-            
-            // Always use the saved progress value from local storage 
-            console.log(`Using saved progress (${savedProgressSeconds}s) instead of server value (${timeSpentSeconds}s)`);
-            timeSpentSeconds = savedProgressSeconds;
+        const response = await apiRequest("GET", `/api/tasks/${taskId}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch task details");
+        }
+        
+        const taskData = await response.json();
+        console.log('Received task data:', taskData);
+        
+        // Check if task has existing timeSpent value
+        if (taskData.timeSpent) {
+          const timeSpentMin = parseInt(taskData.timeSpent, 10);
+          if (!isNaN(timeSpentMin) && timeSpentMin > 0) {
+            // Convert minutes to seconds
+            const timeSpentSec = timeSpentMin * 60;
+            console.log(`Task ${taskId} has existing time spent: ${timeSpentMin} minutes (${timeSpentSec} seconds)`);
           }
+        }
+        
+        // Check if we have progress saved in local storage
+        const progressKey = `timer_progress_${taskId}`;
+        const savedProgressStr = localStorage.getItem(progressKey);
+        console.log(`Saved progress for task ${taskId}:`, savedProgressStr);
+        
+        if (savedProgressStr) {
+          // Parse the saved progress seconds
+          const savedProgress = parseInt(savedProgressStr, 10);
           
-          console.log(`Setting time elapsed to: ${timeSpentSeconds} seconds (${Math.round(timeSpentSeconds / 60)} minutes)`);
-          
-          // Always explicitly set the time elapsed
-          setTimeElapsed(timeSpentSeconds);
-          
-          // Set completed state if already completed
-          if (taskData.completed) {
-            setLastCompletedState({
-              timeSpent: timeSpentSeconds,
-              isCompleted: true
-            });
+          if (!isNaN(savedProgress)) {
+            console.log(`Found saved progress for task ${taskId}: ${savedProgress} seconds`);
+            
+            // Use the saved value from local storage
+            setTimeElapsed(savedProgress);
           }
         }
       } catch (error) {
@@ -218,74 +215,48 @@ export default function TaskTimer({
               // Use string format for consistent handling with zero values
               timeSpent: timeSpentMinutes.toString() 
             }
-          ).then(() => {
-            console.log(`Auto-saved task timer progress: ${timeSpentMinutes} minutes`);
-          }).catch(error => {
-            console.error("Failed to auto-save timer progress:", error);
+          )
+          .then(response => response.json())
+          .then(data => {
+            console.log('Auto-save successful:', data);
+          })
+          .catch(error => {
+            console.error('Error in auto-save:', error);
           });
         }
-      }, 30000); // Save every 30 seconds
+      }, 30000); // 30 seconds
     }
     
+    // Clean up intervals when inactive or component unmounts
     return () => {
-      // Clean up both intervals
       if (timerInterval) {
-        clearInterval(timerInterval);
+        window.clearInterval(timerInterval);
       }
       if (saveInterval) {
-        clearInterval(saveInterval);
+        window.clearInterval(saveInterval);
       }
     };
   }, [isActive, isCompleted, taskId, timeElapsed]);
-
-  // Calculate progress percentage
-  const progressPercentage = Math.min(
-    Math.round((timeElapsed / 60 / duration) * 100),
-    100
-  );
   
-  // Format time as mm:ss
-  const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
-  
-  // Format total duration
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 
-      ? `${hours}h ${mins > 0 ? `${mins}m` : ''}`
-      : `${mins}m`;
-  };
-
-  // Handle start/pause button click
+  // Toggle the timer active state
   const toggleTimer = () => {
-    setIsActive(!isActive);
+    setIsActive((prev) => !prev);
   };
-
-  // Reset timer mutation to reset the progress in the database
+  
+  // Mutation for resetting the timer
   const resetTimerMutation = useMutation({
     mutationFn: async () => {
-      console.log("Resetting timer for task:", taskId);
-      
-      // Store the value we're trying to set to help with debugging
-      const valueToSet = 0;
-      console.log("Setting timeSpent to:", valueToSet);
-      
-      // Reset the task timeSpent in database to 0 - use "0" string to ensure it's treated as explicit zero
-      const taskResponse = await apiRequest(
+      // Simply reset the time spent to 0
+      const response = await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
         { 
-          timeSpent: "0" // Use string "0" to ensure it's properly handled by the server
+          // Use string to handle zero correctly
+          timeSpent: "0" 
         }
       );
       
-      const responseData = await taskResponse.json();
-      console.log("Reset response data:", responseData);
-      
+      const responseData = await response.json();
       return {
         task: responseData
       };
@@ -381,15 +352,10 @@ export default function TaskTimer({
         task: await taskResponse.json()
       };
     },
-    onSuccess: () => {
-      // Restore the previous time elapsed state
-      if (lastCompletedState) {
-        setTimeElapsed(lastCompletedState.timeSpent);
-      }
-      
+    onSuccess: (data) => {
       toast({
-        title: "Task status reset",
-        description: "Task has been marked as in progress again.",
+        title: "Task status updated",
+        description: "Task marked as not completed.",
       });
       
       // Invalidate all relevant queries to refresh the UI
@@ -398,6 +364,9 @@ export default function TaskTimer({
       
       // Call the parent component's onComplete callback to update the UI
       onComplete();
+      
+      // Clear the last completed state
+      setLastCompletedState(null);
     },
     onError: (error: Error) => {
       toast({
@@ -408,24 +377,44 @@ export default function TaskTimer({
     }
   });
   
-  // Handle undo complete button click
-  const undoCompleteTask = () => {
-    undoCompleteMutation.mutate();
+  // Format time for display (MM:SS)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
+  
+  // Format duration for display (Xh Ym)
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (mins === 0) {
+      return `${hours}h`;
+    }
+    
+    return `${hours}h ${mins}m`;
+  };
+  
+  // Calculate the percentage for the progress bar
+  // Based on time elapsed vs allocated time
+  const progressPercentage = Math.min(
+    100,
+    (timeElapsed / (duration * 60)) * 100
+  );
+  
   return (
-    <Card className="p-4 border-2 border-primary/10 shadow-sm">
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-medium flex items-center">
-            {isCompleted && (
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-            )}
-            <span>Current Task</span>
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {assignmentTitle}: {taskDescription}
-          </p>
+    <Card className="overflow-hidden">
+      <div className="p-4 space-y-4">
+        <div className="space-y-1">
+          <h3 className="font-medium">{taskDescription}</h3>
+          <div className="text-sm text-muted-foreground">
+            {assignmentTitle}
+          </div>
         </div>
         
         <div className="space-y-2">
@@ -448,35 +437,17 @@ export default function TaskTimer({
           </div>
         </div>
         
-        {/* Music player style controls */}
-        <div className="flex justify-center space-x-3 items-center">
-          {/* Previous task button - always goes to previous task */}
-          <Button
-            size="icon"
-            variant="outline"
-            className="rounded-full h-9 w-9"
-            title="Previous task"
-            onClick={() => {
-              if (onPrevious) {
-                // Always just navigate to the previous task
-                // The parent component will handle uncompleting it
-                onPrevious();
-              }
-            }}
-            disabled={undoCompleteMutation.isPending || !onPrevious}
-          >
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M1.94976 2.74963C1.94976 2.44573 2.19605 2.19971 2.49976 2.19971C2.80347 2.19971 3.04976 2.44573 3.04976 2.74963V7.24963L13.0498 2.24966C13.2806 2.11496 13.5626 2.12833 13.7824 2.28385C14.0022 2.43938 14.0839 2.70401 13.9863 2.93814L13.9859 2.93902C13.9826 2.94587 13.9789 2.95267 13.975 2.95938C13.9714 2.96563 13.9678 2.97186 13.9641 2.97803L13.0498 4.74963L13.0498 10.2496L13.9641 12.0212C13.9678 12.0274 13.9714 12.0336 13.975 12.0399C13.9789 12.0466 13.9826 12.0534 13.9859 12.0602L13.9863 12.0611C14.0839 12.2952 14.0022 12.5599 13.7824 12.7154C13.5626 12.8709 13.2806 12.8843 13.0498 12.7496L3.04976 7.74963V12.2496C3.04976 12.5535 2.80347 12.7996 2.49976 12.7996C2.19605 12.7996 1.94976 12.5535 1.94976 12.2496V2.74963Z" fill="currentColor" />
-            </svg>
-          </Button>
-          
-          {/* Play/Pause button */}
+        {/* Clear separation of navigation controls and timer controls */}
+        
+        {/* SECTION 1: Timer Controls - only affect the timer state */}
+        <div className="flex justify-center space-x-3 items-center mb-3 border-b pb-3">
           <Button
             size="icon"
             variant={isActive ? "outline" : "default"}
             className="rounded-full h-11 w-11"
             onClick={toggleTimer}
             disabled={isCompleted}
+            title={isActive ? "Pause timer" : "Start timer"}
           >
             {isActive ? (
               <Pause className="h-5 w-5" />
@@ -485,34 +456,13 @@ export default function TaskTimer({
             )}
           </Button>
           
-          {/* Next task button - navigation only */}
-          <Button
-            size="icon"
-            variant="outline"
-            className="rounded-full h-9 w-9"
-            title="Next task"
-            onClick={() => {
-              // Navigation only - no completion logic
-              if (onNext) {
-                onNext();
-              }
-            }}
-            disabled={!onNext}
-          >
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M13.0502 2.74963C13.0502 2.44573 12.8039 2.19971 12.5002 2.19971C12.1965 2.19971 11.9502 2.44573 11.9502 2.74963V7.24963L1.95022 2.24966C1.71939 2.11496 1.43739 2.12833 1.21758 2.28385C0.997759 2.43938 0.916107 2.70401 1.01371 2.93814L1.01413 2.93902C1.01741 2.94587 1.02113 2.95267 1.02504 2.95938C1.02859 2.96563 1.03223 2.97186 1.03588 2.97803L1.95022 4.74963V10.2496L1.03588 12.0212C1.03223 12.0274 1.02859 12.0336 1.02504 12.0399C1.02113 12.0466 1.01741 12.0534 1.01413 12.0602L1.01371 12.0611C0.916107 12.2952 0.997759 12.5599 1.21758 12.7154C1.43739 12.8709 1.71939 12.8843 1.95022 12.7496L11.9502 7.74963V12.2496C11.9502 12.5535 12.1965 12.7996 12.5002 12.7996C12.8039 12.7996 13.0502 12.5535 13.0502 12.2496V2.74963Z" fill="currentColor" />
-            </svg>
-          </Button>
-        </div>
-        
-        {/* Bottom controls */}
-        <div className="flex justify-between items-center">
           <Button
             size="sm"
             variant={timeElapsed > 0 ? "secondary" : "ghost"}
             className={`${timeElapsed > 0 ? 'text-xs bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700' : 'text-xs'}`}
             onClick={resetTimer}
             disabled={timeElapsed === 0 || isCompleted || resetTimerMutation.isPending}
+            title="Reset timer to 0:00"
           >
             {resetTimerMutation.isPending ? (
               <>
@@ -529,17 +479,95 @@ export default function TaskTimer({
               </>
             )}
           </Button>
+        </div>
+        
+        {/* SECTION 2: Task Completion Controls - only affect the task completion state */}
+        <div className="flex justify-center mb-3 border-b pb-3">
+          <Button
+            size="sm"
+            variant={isCompleted ? "destructive" : "default"}
+            className="w-full mx-1"
+            onClick={isCompleted ? () => undoCompleteMutation.mutate() : () => markCompletedMutation.mutate()}
+            disabled={markCompletedMutation.isPending || undoCompleteMutation.isPending}
+            title={isCompleted ? "Mark as not completed" : "Mark as completed"}
+          >
+            {markCompletedMutation.isPending || undoCompleteMutation.isPending ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Updating...
+              </>
+            ) : isCompleted ? (
+              <>
+                <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 14L4 9l5-5"></path>
+                  <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                </svg>
+                Undo Completion
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Mark as Complete
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {/* SECTION 3: Navigation Controls - only affect which task is displayed */}
+        <div className="flex justify-between items-center">
+          <Button
+            size="sm" 
+            variant="outline"
+            className="h-9 w-24 flex items-center justify-center"
+            onClick={() => {
+              if (onPrevious) {
+                // Navigation only - no completion logic
+                onPrevious();
+              }
+            }}
+            disabled={!onPrevious}
+            title="Go to previous task (navigation only)"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-1">
+              <path d="M8.84182 3.13514C9.04327 3.32401 9.05348 3.64042 8.86462 3.84188L5.43521 7.49991L8.86462 11.1579C9.05348 11.3594 9.04327 11.6758 8.84182 11.8647C8.64036 12.0535 8.32394 12.0433 8.13508 11.8419L4.38508 7.84188C4.20477 7.64955 4.20477 7.35027 4.38508 7.15794L8.13508 3.15794C8.32394 2.95648 8.64036 2.94628 8.84182 3.13514Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+            Previous
+          </Button>
           
-          {isCompleted ? (
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Completed
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              In Progress
-            </Badge>
-          )}
+          <div className="mx-2 text-sm text-gray-500">
+            {isCompleted ? (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completed
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                In Progress
+              </Badge>
+            )}
+          </div>
+          
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 w-24 flex items-center justify-center"
+            onClick={() => {
+              if (onNext) {
+                // Navigation only - no completion logic
+                onNext();
+              }
+            }}
+            disabled={!onNext}
+            title="Go to next task (navigation only)"
+          >
+            Next
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="ml-1">
+              <path d="M6.1584 3.13508C5.95694 3.32394 5.94673 3.64036 6.1356 3.84182L9.56499 7.49991L6.1356 11.1579C5.94673 11.3594 5.95694 11.6758 6.1584 11.8647C6.35986 12.0535 6.67627 12.0433 6.86514 11.8419L10.6151 7.84182C10.7954 7.64949 10.7954 7.35021 10.6151 7.15788L6.86514 3.15788C6.67627 2.95642 6.35986 2.94621 6.1584 3.13508Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+          </Button>
         </div>
       </div>
     </Card>
