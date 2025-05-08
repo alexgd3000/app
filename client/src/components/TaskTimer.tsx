@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Pause, RotateCcw, CheckCircle, UndoIcon } from "lucide-react";
+import { Play, Pause, RotateCcw, CheckCircle, Undo as UndoIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
