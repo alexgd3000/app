@@ -531,6 +531,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               {scheduleData.map((item) => {
                 const inProgress = isItemInProgress(item);
                 const completed = item.completed;
+                const isCurrentTask = currentTask && currentTask.id === item.id;
                 
                 // Determine the status label
                 let statusLabel = "Not started";
@@ -539,20 +540,23 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 if (completed) {
                   statusLabel = "Completed";
                   statusClass = "bg-green-50 text-green-700 border-green-100";
-                } else if (inProgress) {
+                } else if (inProgress || isCurrentTask) {
                   statusLabel = "In progress";
                   statusClass = "bg-blue-50 text-blue-700 border-blue-100";
                 }
                 
                 return (
-                  <li key={item.id} className="relative pl-10">
+                  <li 
+                    key={item.id} 
+                    className={`relative pl-10 ${isCurrentTask ? 'bg-primary/5 -mx-6 px-6 py-3 rounded-md shadow-sm border-l-4 border-primary' : ''}`}
+                  >
                     <div className="flex items-center">
                       <div 
-                        className={`absolute left-0 p-1 rounded-full border-4 border-white ${inProgress ? 'bg-gray-100' : 'bg-white'}`}
+                        className={`absolute left-0 p-1 rounded-full border-4 border-white ${(inProgress || isCurrentTask) ? 'bg-gray-100' : 'bg-white'}`}
                       >
                         <div 
                           className={`w-2 h-2 rounded-full ${
-                            completed ? 'bg-green-500' : inProgress ? 'bg-blue-500' : 'bg-gray-400'
+                            completed ? 'bg-green-500' : (inProgress || isCurrentTask) ? 'bg-blue-500' : 'bg-gray-400'
                           }`}
                         ></div>
                       </div>
@@ -561,17 +565,22 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                           <span className={`${statusClass} text-xs px-2 py-1 rounded border mr-2 min-w-[90px] text-center`}>
                             {statusLabel}
                           </span>
-                          <h3 className="text-sm font-medium text-gray-900">
+                          <h3 className={`text-sm ${isCurrentTask ? 'font-bold' : 'font-medium'} text-gray-900 flex-1`}>
                             {item.task && item.assignment
                               ? `${item.assignment.title}: ${item.task.description}`
                               : "Unknown task"}
+                            {isCurrentTask && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary text-white">
+                                Current
+                              </span>
+                            )}
                           </h3>
                           
                           {!completed && (
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              className="text-xs h-7 px-2 ml-auto"
+                              className="text-xs h-7 px-2 ml-2"
                               onClick={() => handleMarkComplete(item.id)}
                             >
                               Complete
@@ -583,6 +592,19 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                         </p>
                       </div>
                     </div>
+                    
+                    {isCurrentTask && (
+                      <div className="mt-2 ml-[106px]">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-xs h-6 px-1 text-primary"
+                          onClick={() => setCurrentTask(item)}
+                        >
+                          Focus on this task
+                        </Button>
+                      </div>
+                    )}
                   </li>
                 );
               })}

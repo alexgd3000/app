@@ -47,6 +47,9 @@ export default function TaskTimer({
   // Mutations for updating the task status
   const markCompletedMutation = useMutation({
     mutationFn: async () => {
+      // Calculate the time spent (at least 1 minute)
+      const timeSpentMinutes = Math.max(Math.round(timeElapsed / 60), 1);
+      
       // First, mark the schedule item as completed
       const scheduleResponse = await apiRequest(
         "PUT", 
@@ -55,21 +58,26 @@ export default function TaskTimer({
       );
       
       // Then, mark the actual task as completed in the assignment
+      // and save the time spent to preserve progress
       const taskResponse = await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
-        { completed: true, timeSpent: Math.max(Math.round(timeElapsed / 60), 1) }
+        { 
+          completed: true, 
+          timeSpent: timeSpentMinutes
+        }
       );
       
       return {
         scheduleItem: await scheduleResponse.json(),
-        task: await taskResponse.json()
+        task: await taskResponse.json(),
+        timeSpentMinutes
       };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Task completed",
-        description: "Great job! Task marked as completed.",
+        description: `Great job! Task marked as completed (${data.timeSpentMinutes} mins spent).`,
       });
       
       // Invalidate all relevant queries to refresh the UI
@@ -90,10 +98,11 @@ export default function TaskTimer({
 
   // Update time elapsed when a task is first loaded or when taskId changes
   useEffect(() => {
-    // Reset the timer state first
+    // Reset active state when switching tasks
     setIsActive(false);
+    
+    // Reset last completed state
     setLastCompletedState(null);
-    setTimeElapsed(0);
     
     // When a task is loaded, check if it has spent time already
     const fetchTaskDetails = async () => {
@@ -101,9 +110,14 @@ export default function TaskTimer({
         const response = await fetch(`/api/tasks/${taskId}`);
         if (response.ok) {
           const taskData = await response.json();
-          // If task has time spent, initialize the timer with that value (converted to seconds)
+          
+          // Reset timer state for this task based on stored progress
           if (taskData.timeSpent > 0) {
+            // If task has time spent, initialize the timer with that value (converted to seconds)
             setTimeElapsed(taskData.timeSpent * 60);
+          } else {
+            // If task has no time spent, start from zero
+            setTimeElapsed(0);
           }
           
           // Set completed state if already completed
@@ -119,25 +133,51 @@ export default function TaskTimer({
       }
     };
     
+    // Always reset and fetch task details when switching tasks
     fetchTaskDetails();
   }, [taskId]);
   
-  // Start timer if task is active
+  // Start timer if task is active and save progress periodically
   useEffect(() => {
-    let interval: number | null = null;
+    let timerInterval: number | null = null;
+    let saveInterval: number | null = null;
     
     if (isActive && !isCompleted) {
-      interval = window.setInterval(() => {
+      // Update timer every second
+      timerInterval = window.setInterval(() => {
         setTimeElapsed((prev) => prev + 1);
       }, 1000);
+      
+      // Save progress to API every 30 seconds
+      saveInterval = window.setInterval(() => {
+        // Only save if we have elapsed time and we're still active
+        if (timeElapsed > 0 && isActive && !isCompleted) {
+          const timeSpentMinutes = Math.max(Math.round(timeElapsed / 60), 1);
+          
+          // Save current progress to the task
+          apiRequest(
+            "PUT",
+            `/api/tasks/${taskId}`,
+            { timeSpent: timeSpentMinutes }
+          ).then(() => {
+            console.log(`Auto-saved task timer progress: ${timeSpentMinutes} minutes`);
+          }).catch(error => {
+            console.error("Failed to auto-save timer progress:", error);
+          });
+        }
+      }, 30000); // Save every 30 seconds
     }
     
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      // Clean up both intervals
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      if (saveInterval) {
+        clearInterval(saveInterval);
       }
     };
-  }, [isActive, isCompleted]);
+  }, [isActive, isCompleted, taskId, timeElapsed]);
 
   // Calculate progress percentage
   const progressPercentage = Math.min(
