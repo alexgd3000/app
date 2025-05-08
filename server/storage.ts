@@ -564,13 +564,18 @@ export class MemStorage implements IStorage {
     for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // Skip if we don't have enough time left - allow exact fits
+      // Skip if we don't have enough time left - allow for exact fits
       if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
-        notScheduled.push({
-          taskId: task.id,
-          assignmentId: task.assignmentId
-        });
-        continue;
+        // Special case: if this is exactly equal to available time, schedule it
+        if (scheduledTime + timeNeeded === availableMinutes) {
+          // This task fits exactly, so we'll proceed
+        } else {
+          notScheduled.push({
+            taskId: task.id,
+            assignmentId: task.assignmentId
+          });
+          continue;
+        }
       }
       
       // Skip if task would end after our end time
@@ -596,11 +601,16 @@ export class MemStorage implements IStorage {
         
         // Skip if after adjustment it doesn't fit in available time - allow exact fits
         if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
-          notScheduled.push({
-            taskId: task.id,
-            assignmentId: task.assignmentId
-          });
-          continue;
+          // Special case: if this is exactly equal to available time, schedule it
+          if (scheduledTime + timeNeeded === availableMinutes) {
+            // This task fits exactly, so we'll proceed
+          } else {
+            notScheduled.push({
+              taskId: task.id,
+              assignmentId: task.assignmentId
+            });
+            continue;
+          }
         }
         
         // Skip if after adjustment it ends too late
