@@ -177,27 +177,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/tasks/reorder", async (req: Request, res: Response) => {
     try {
       // Log the received data for debugging
-      console.log("Received reorder request:", req.body);
+      console.log("Received reorder request:", JSON.stringify(req.body));
       
-      const { tasks } = req.body;
-      if (!Array.isArray(tasks)) {
-        console.log("Invalid tasks format:", tasks);
-        return res.status(400).json({ message: "Tasks must be an array" });
+      // Handle two possible formats: {tasks: [...]} or direct array
+      let tasksToReorder;
+      if (req.body.tasks && Array.isArray(req.body.tasks)) {
+        tasksToReorder = req.body.tasks;
+      } else if (Array.isArray(req.body)) {
+        tasksToReorder = req.body;
+      } else {
+        console.log("Invalid request format:", req.body);
+        return res.status(400).json({ 
+          message: "Invalid request format. Expected {tasks: [...]}" 
+        });
+      }
+      
+      // Verify we have tasks to process
+      if (!tasksToReorder || tasksToReorder.length === 0) {
+        console.log("No tasks provided for reordering");
+        return res.status(400).json({ message: "No tasks provided for reordering" });
       }
       
       try {
         // Ensure all tasks have id and order properties
-        const validTasks = tasks.map((task, index) => {
-          if (typeof task.id !== 'number') {
+        const validTasks = tasksToReorder.map((task, index) => {
+          const taskId = parseInt(task.id, 10);
+          if (isNaN(taskId)) {
             throw new Error(`Task at index ${index} has invalid ID: ${task.id}`);
           }
+          
           return {
-            id: task.id,
+            id: taskId,
             order: typeof task.order === 'number' ? task.order : index
           };
         });
         
-        console.log("Processing valid tasks:", validTasks);
+        console.log("Processing valid tasks:", JSON.stringify(validTasks));
+        
+        // Try to verify all tasks exist before reordering
+        for (const task of validTasks) {
+          const existingTask = await storage.getTask(task.id);
+          if (!existingTask) {
+            return res.status(404).json({ 
+              message: `Task with ID ${task.id} not found` 
+            });
+          }
+        }
+        
         await storage.updateTasksOrder(validTasks);
         return res.json({ message: "Tasks reordered successfully" });
       } catch (err: any) {
@@ -206,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (err.message && err.message.includes("Task with ID")) {
           return res.status(404).json({ message: "Task not found", details: err.message });
         }
-        throw err; // Re-throw if it's a different error
+        return res.status(400).json({ message: err.message });
       }
     } catch (error: any) {
       console.error("Server error in task reordering:", error);

@@ -64,31 +64,32 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
       console.log("Reordering tasks:", tasks);
       
       try {
-        const response = await apiRequest(
-          "PUT", 
-          "/api/tasks/reorder", 
-          { tasks: tasks }
-        );
+        // Use direct fetch with more detailed debugging
+        const url = "/api/tasks/reorder";
+        console.log(`Making request to ${url}`);
+        
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ tasks: tasks })
+        });
+        
+        if (!response.ok) {
+          console.error(`Server responded with status: ${response.status}`);
+          const errorText = await response.text();
+          console.error(`Error response: ${errorText}`);
+          throw new Error(`Server error: ${response.status} - ${errorText || 'Unknown error'}`);
+        }
+        
         return response.json();
       } catch (error: any) {
+        console.error("Error during reordering:", error);
         // Improve error message by parsing the response if possible
         let errorMessage = "Failed to reorder tasks";
         
-        // If there's a response JSON with an error message, use that
-        if (error.response) {
-          try {
-            const errorData = await error.response.json();
-            if (errorData.message) {
-              errorMessage = errorData.message;
-            }
-            if (errorData.details) {
-              errorMessage = errorData.details;
-            }
-          } catch (e) {
-            // If we can't parse the error response, use the original error
-            errorMessage = error.message;
-          }
-        } else {
+        if (error.message) {
           errorMessage = error.message;
         }
         
