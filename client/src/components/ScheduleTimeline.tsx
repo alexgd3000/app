@@ -210,34 +210,16 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   return (
     <Card className="mt-6">
       <CardHeader className="px-6 py-4 border-b border-gray-200">
-        <div>
-          {/* First row: Title and Generate button */}
-          <div className="flex items-center justify-between mb-2">
+        <div className="space-y-4">
+          {/* First row: Title and description directly together */}
+          <div className="flex items-center">
             <h2 className="text-lg font-medium text-gray-900">Today's Schedule</h2>
-            <Button 
-              onClick={() => generateScheduleMutation.mutate()} 
-              disabled={generateScheduleMutation.isPending}
-              className="mt-0"
-            >
-              {generateScheduleMutation.isPending ? (
-                <span className="flex items-center">
-                  <i className="ri-loader-2-line animate-spin mr-1"></i>
-                  Generating...
-                </span>
-              ) : (
-                <>
-                  <i className="ri-magic-line mr-1"></i>
-                  Generate Plan
-                </>
-              )}
-            </Button>
+            <p className="text-sm text-gray-500 ml-3">Your optimized work plan for completing all assignments.</p>
           </div>
           
-          {/* Second row: Description and inputs */}
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500 mr-4">Your optimized work plan for completing all assignments.</p>
-            
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+          {/* Second row: All controls in a single row */}
+          <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-3">
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
               <div className="flex items-center">
                 <span className="text-sm text-gray-500 mr-2 whitespace-nowrap">Available Time:</span>
                 <div className="flex space-x-1">
@@ -277,6 +259,24 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 </div>
               </div>
             </div>
+            
+            <Button 
+              onClick={() => generateScheduleMutation.mutate()} 
+              disabled={generateScheduleMutation.isPending}
+              className="ml-auto"
+            >
+              {generateScheduleMutation.isPending ? (
+                <span className="flex items-center">
+                  <i className="ri-loader-2-line animate-spin mr-1"></i>
+                  Generating...
+                </span>
+              ) : (
+                <>
+                  <i className="ri-magic-line mr-1"></i>
+                  Generate Plan
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </CardHeader>
