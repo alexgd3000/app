@@ -71,7 +71,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       
       const totalMinutes = getTotalMinutes();
       if (totalMinutes !== undefined) {
-        payload.availableMinutes = totalMinutes;
+        // Add a hidden 15-minute buffer to ensure tasks that exactly fit will be scheduled
+        payload.availableMinutes = totalMinutes + 15;
       }
       
       const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, payload);
@@ -88,9 +89,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
         // Only show warning if tasks due today couldn't be scheduled AND
         // the available time is less than the time required for today's due tasks
         // This ensures we don't show warnings when available time equals required time
-        const availableTime = data.availableMinutes || 0;
+        // Note: We need to account for our 15-minute buffer that was added
+        const actualAvailableTime = getTotalMinutes() || 0; // Use actual time input by user (not buffered time)
         const neededTime = data.todaysDueTasksTime || 0;
-        setShowWarning(todaysTasksUnscheduled > 0 && availableTime < neededTime);
+        setShowWarning(todaysTasksUnscheduled > 0 && actualAvailableTime < neededTime);
       } else {
         setNotScheduledTasks([]);
         setShowWarning(false);
