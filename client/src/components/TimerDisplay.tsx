@@ -125,25 +125,10 @@ export default function TimerDisplay({
         {/* Progress bar */}
         <Progress value={progressPercentage} className="h-2 mb-2" />
         
-        {/* Controls in a single row */}
-        <div className="flex items-center justify-between gap-1">
-          {/* Navigation and action buttons in a single row */}
-          <div className="grid grid-cols-4 gap-1 w-full">
-            {/* Previous button */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-1 text-xs"
-              onClick={onPrevious}
-              disabled={!onPrevious}
-            >
-              <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
-              Prev
-            </Button>
-            
+        {/* Controls */}
+        <div className="space-y-2">
+          {/* Timer controls */}
+          <div className="grid grid-cols-3 gap-1">
             {/* Play/Pause button */}
             <Button
               size="sm"
@@ -171,21 +156,61 @@ export default function TimerDisplay({
               Reset
             </Button>
             
-            {/* Next/Complete button */}
+            {/* Toggle completion button */}
+            <Button
+              size="sm"
+              variant={timerState.isCompleted ? "destructive" : "default"}
+              className="h-8 text-xs"
+              onClick={timerState.isCompleted ? onUndo : onComplete}
+            >
+              {timerState.isCompleted ? (
+                <><svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 14L4 9l5-5"></path>
+                  <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                </svg> Undo</>
+              ) : (
+                <><CheckCircle className="h-3 w-3 mr-1" /> Complete</>
+              )}
+            </Button>
+          </div>
+          
+          {/* Navigation controls - separate row */}
+          <div className="flex justify-between gap-1 border-t pt-2">
+            <Button
+              size="sm" 
+              variant="outline"
+              className="h-8 px-2 text-xs flex-1"
+              onClick={onPrevious}
+              disabled={!onPrevious}
+            >
+              <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              Previous Task
+            </Button>
+            
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-1 text-xs"
-              onClick={timerState.isCompleted ? onNext : onComplete}
-              disabled={!onNext && timerState.isCompleted}
+              className="h-8 px-2 text-xs flex-1"
+              onClick={onNext}
+              disabled={!onNext}
             >
-              {timerState.isCompleted ? "Next" : "Complete"}
+              Next Task
               <svg className="h-3 w-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
             </Button>
           </div>
+          
+          {/* Task progress indicator */}
+          {taskProgress && (
+            <div className="text-xs text-center text-gray-500">
+              Task {taskProgress.current} of {taskProgress.total}
+            </div>
+          )}
         </div>
       </div>
     </Card>
