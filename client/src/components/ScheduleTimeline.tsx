@@ -29,6 +29,31 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const [unscheduledTaskDetails, setUnscheduledTaskDetails] = useState<{ id: number; description: string; assignmentTitle: string; timeAllocation: number }[]>([]);
   const [showWarning, setShowWarning] = useState<boolean>(false);
   
+  // Reset all timers mutation
+  const resetAllTimersMutation = useMutation({
+    mutationFn: async () => {
+      // For this implementation, we just need to clear the local storage
+      localStorage.removeItem('timerStates');
+      // Return true to indicate success
+      return true;
+    },
+    onSuccess: () => {
+      toast({
+        title: "All timers reset",
+        description: "All task timers have been reset to 0:00",
+        variant: "default"
+      });
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset timers",
+        variant: "destructive"
+      });
+    }
+  });
+  
   // Calculate total minutes from hours and minutes inputs
   const getTotalMinutes = (): number | undefined => {
     const hours = availableHours ? parseInt(availableHours, 10) : 0;
@@ -228,7 +253,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       type="number"
                       min="0"
                       placeholder="Hours"
-                      className="w-[70px]"
+                      className="w-[90px]"
                       value={availableHours}
                       onChange={(e) => setAvailableHours(e.target.value)}
                     />
@@ -239,7 +264,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       min="0"
                       max="59"
                       placeholder="Mins"
-                      className="w-[70px]"
+                      className="w-[90px]"
                       value={availableMinutes}
                       onChange={(e) => setAvailableMinutes(e.target.value)}
                     />
@@ -252,7 +277,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 <div className="relative">
                   <Input 
                     type="time"
-                    className="w-[100px]"
+                    className="w-[130px]"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
@@ -423,6 +448,15 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <div className="text-sm text-gray-500">
               <strong>{scheduleData.length}</strong> tasks scheduled for today
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => resetAllTimersMutation.mutate()}
+              disabled={resetAllTimersMutation.isPending}
+            >
+              {resetAllTimersMutation.isPending ? 'Resetting...' : 'Reset All Timers'}
+            </Button>
           </div>
         </CardFooter>
       )}
