@@ -231,6 +231,8 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   const completeTask = async (taskId: number, scheduleItemId: number) => {
     if (!timerStates[taskId]) return;
     
+    console.log(`Marking task ${taskId} as complete (scheduleItem: ${scheduleItemId})`);
+    
     // Pause the timer first but don't trigger API calls yet
     setTimerStates(prev => ({
       ...prev,
@@ -257,29 +259,41 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       // Calculate minutes spent
       const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
       
-      // Update the task first
-      await apiRequest(
+      // Update the task and schedule item without awaiting (don't block UI)
+      // These will complete in the background
+      const updateTask = apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
         { 
           completed: true,
           timeSpent: minutesSpent.toString()
         }
-      );
+      ).catch(error => {
+        console.error(`Failed to update task ${taskId}:`, error);
+        throw error;
+      });
       
-      // Then update the schedule item
-      await apiRequest(
+      const updateSchedule = apiRequest(
         "PUT", 
         `/api/schedule/${scheduleItemId}`, 
         { completed: true }
-      );
+      ).catch(error => {
+        console.error(`Failed to update schedule item ${scheduleItemId}:`, error);
+        throw error;
+      });
       
-      // Notify parent to refresh UI after a small delay to avoid race conditions
-      setTimeout(() => {
-        onTimerComplete(taskId);
-      }, 300);
+      // Run both updates in parallel
+      Promise.all([updateTask, updateSchedule])
+        .then(() => {
+          console.log(`Successfully marked task ${taskId} as complete`);
+          // Only notify parent when both API calls are successful
+          onTimerComplete(taskId);
+        })
+        .catch(error => {
+          console.error("Failed to complete task updates:", error);
+        });
     } catch (error) {
-      console.error("Failed to complete task:", error);
+      console.error("Failed to process task completion:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({
@@ -299,6 +313,8 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
     if (!timerStates[taskId]) return;
     
+    console.log(`Marking task ${taskId} as incomplete (scheduleItem: ${scheduleItemId})`);
+    
     try {
       // Update local state first for immediate UI feedback
       setTimerStates(prev => ({
@@ -312,32 +328,43 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       // Save timer states to localStorage before API calls
       saveTimerStates();
       
-      // Update the task first
-      await apiRequest(
-        "PUT",
-        `/api/tasks/${taskId}`,
-        { completed: false }
-      );
-      
-      // Then update the schedule item
-      await apiRequest(
-        "PUT", 
-        `/api/schedule/${scheduleItemId}`, 
-        { completed: false }
-      );
-      
-      // Only set as active if requested - this does NOT navigate, 
-      // it only updates the active task for UI focus
+      // Only set as active if requested (without waiting for API)
       if (makeActive) {
         setActiveTaskId(taskId);
       }
       
-      // Notify parent to refresh UI after a small delay to avoid race conditions
-      setTimeout(() => {
-        onTimerComplete(taskId);
-      }, 300);
+      // Update the task and schedule item without awaiting (don't block UI)
+      // These will complete in the background
+      const updateTask = apiRequest(
+        "PUT",
+        `/api/tasks/${taskId}`,
+        { completed: false }
+      ).catch(error => {
+        console.error(`Failed to update task ${taskId}:`, error);
+        throw error;
+      });
+      
+      const updateSchedule = apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
+        { completed: false }
+      ).catch(error => {
+        console.error(`Failed to update schedule item ${scheduleItemId}:`, error);
+        throw error;
+      });
+      
+      // Run both updates in parallel
+      Promise.all([updateTask, updateSchedule])
+        .then(() => {
+          console.log(`Successfully marked task ${taskId} as incomplete`);
+          // Only notify parent when both API calls are successful
+          onTimerComplete(taskId);
+        })
+        .catch(error => {
+          console.error("Failed to undo task completion updates:", error);
+        });
     } catch (error) {
-      console.error("Failed to undo task completion:", error);
+      console.error("Failed to process task status update:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({

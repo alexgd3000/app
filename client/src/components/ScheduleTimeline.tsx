@@ -13,9 +13,29 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { RotateCcw } from "lucide-react";
 import TaskTimerSystem from "./TaskTimerSystem";
 
+// Define a clearer type for schedule data
+interface ScheduleItem {
+  id: number;
+  taskId: number;
+  startTime: string;
+  endTime: string;
+  completed: boolean;
+  task?: {
+    id: number;
+    description: string;
+    assignmentId: number;
+    completed: boolean;
+    timeAllocation: number;
+  };
+  assignment?: {
+    id: number;
+    title: string;
+  };
+}
+
 interface ScheduleTimelineProps {
   isLoading: boolean;
-  scheduleData: any[];
+  scheduleData: ScheduleItem[] | any[];
   onRefresh: () => void;
 }
 

@@ -1,40 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 import { Assignment } from "@shared/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Focus() {
-  const [scheduleData, setScheduleData] = useState<any[]>([]);
-  const [scheduleLoading, setScheduleLoading] = useState(false);
-  
+  // Only fetch assignments when needed, not on every component render
   const { 
     data: assignments = [], 
     isLoading: assignmentsLoading,
   } = useQuery<Assignment[]>({
     queryKey: ['/api/assignments/incomplete'],
+    staleTime: 30000, // Data stays fresh for 30 seconds before refetching
   });
 
-  // This function will be used to refresh the schedule data when needed
-  const refetchSchedule = async () => {
-    setScheduleLoading(true);
-    try {
-      const response = await fetch('/api/schedule');
-      const data = await response.json();
-      setScheduleData(data);
-    } catch (error) {
-      console.error('Failed to fetch schedule:', error);
-    } finally {
-      setScheduleLoading(false);
-    }
-  };
-
-  // Effect to fetch schedule data when the component mounts
-  useEffect(() => {
-    refetchSchedule();
-  }, []);
-
+  // Use react-query for schedule data instead of useState + fetch
+  const {
+    data: scheduleData = [],
+    isLoading: scheduleLoading,
+    refetch: refetchSchedule
+  } = useQuery<any[]>({
+    queryKey: ['/api/schedule'],
+    staleTime: 30000, // Data stays fresh for 30 seconds before refetching
+  });
+  
+  // Manual refresh function that doesn't change timer states
   const refreshData = () => {
+    console.log("Manual refresh requested - will only reload if stale");
     refetchSchedule();
   };
 

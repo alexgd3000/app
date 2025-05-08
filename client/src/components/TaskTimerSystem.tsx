@@ -45,24 +45,24 @@ export default function TaskTimerSystem({
     resetAllTimers
   } = useTimerSystem({
     scheduleData,
-    onTimerComplete: () => {
-      // Invalidate queries to refresh UI and sync between tabs
-      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+    onTimerComplete: (taskId) => {
+      console.log("Timer complete callback called for task:", taskId);
       
-      // Also invalidate specific task queries that Planner may be using
-      queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
-      
-      // Force a full refresh of all assignment tasks
-      scheduleData.forEach(item => {
-        if (item.task?.assignmentId) {
-          queryClient.invalidateQueries({ 
-            queryKey: [`/api/assignments/${item.task.assignmentId}/tasks`] 
+      // Find the task in scheduleData to identify the assignment
+      const scheduleItem = scheduleData.find(item => item.taskId === taskId);
+      if (scheduleItem && scheduleItem.task) {
+        // Only invalidate the specific assignment's tasks
+        const assignmentId = scheduleItem.task.assignmentId;
+        if (assignmentId) {
+          console.log(`Refreshing specific task data for assignment: ${assignmentId}`);
+          queryClient.invalidateQueries({
+            queryKey: [`/api/assignments/${assignmentId}/tasks`]
           });
         }
-      });
+      }
       
-      onRefresh();
+      // Don't invalidate ALL queries every time - this causes UI refreshes
+      // that interrupt the timer and navigation
     }
   });
   
