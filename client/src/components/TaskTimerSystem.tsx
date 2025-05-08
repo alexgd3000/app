@@ -32,7 +32,8 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     resetTimer,
     completeTask,
     undoTaskCompletion,
-    switchToTask
+    switchToTask,
+    resetAllTimers
   } = useTimerSystem({
     scheduleData,
     onTimerComplete: () => {

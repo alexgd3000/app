@@ -405,6 +405,52 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     saveTimerStates();
   };
   
+  // Reset all timers at once
+  const resetAllTimers = async () => {
+    // Pause any active timer
+    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
+      pauseTimer(activeTaskId);
+    }
+    
+    // Create a new object with all timers reset to 0
+    const resetStates: Record<number, TaskTimerState> = {};
+    
+    // For each timer in the current states
+    Object.keys(timerStates).forEach(taskIdStr => {
+      const taskId = parseInt(taskIdStr);
+      if (!isNaN(taskId)) {
+        resetStates[taskId] = {
+          ...timerStates[taskId],
+          timeElapsed: 0,
+          isActive: false,
+          lastUpdated: Date.now()
+        };
+      }
+    });
+    
+    // Update the state with the reset timers
+    setTimerStates(resetStates);
+    
+    // Clear localStorage
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    
+    // Update each task on the server to have timeSpent: "0"
+    for (const taskIdStr of Object.keys(timerStates)) {
+      const taskId = parseInt(taskIdStr);
+      if (!isNaN(taskId)) {
+        try {
+          await apiRequest(
+            "PUT",
+            `/api/tasks/${taskId}`,
+            { timeSpent: "0" }
+          );
+        } catch (error) {
+          console.error(`Failed to reset timer for task ${taskId} on server:`, error);
+        }
+      }
+    }
+  };
+  
   return {
     timerStates,
     activeTaskId,
@@ -414,6 +460,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     completeTask,
     undoTaskCompletion,
     updateElapsedTime,
-    switchToTask
+    switchToTask,
+    resetAllTimers
   };
 }
