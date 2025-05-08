@@ -284,7 +284,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 <div className="relative">
                   <Input 
                     type="time"
-                    className="w-[160px]"
+                    className="w-[130px]"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
@@ -421,7 +421,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                   <span className="text-sm text-gray-500 mr-2">Start at:</span>
                   <Input 
                     type="time"
-                    className="w-[160px]"
+                    className="w-[130px]"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
