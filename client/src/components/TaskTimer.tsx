@@ -117,10 +117,9 @@ export default function TaskTimer({
       const progressKey = `timer_progress_${taskId}`;
       console.log(`Saving timer progress for task ${taskId}: ${timeElapsed} seconds`);
       
-      // Only save if there's actual progress (non-zero)
-      if (timeElapsed > 0) {
-        localStorage.setItem(progressKey, timeElapsed.toString());
-      }
+      // Always save the current time regardless of value
+      // This ensures we save zero when the timer is reset
+      localStorage.setItem(progressKey, timeElapsed.toString());
     }
   };
   
@@ -153,16 +152,15 @@ export default function TaskTimer({
           const savedProgress = localStorage.getItem(progressKey);
           let timeSpentSeconds = timeSpentMinutes * 60;
           
-          // If we have locally saved progress that's greater than the server value, use that instead
-          if (savedProgress) {
+          // If we have saved progress in local storage, always use that instead of the server value
+          // This ensures the timer picks up from where it was left when the user navigated away
+          if (savedProgress !== null) {
             const savedProgressSeconds = parseInt(savedProgress, 10);
             console.log(`Found saved progress for task ${taskId}: ${savedProgressSeconds} seconds`);
             
-            // Choose the larger value between saved progress and server value
-            if (savedProgressSeconds > timeSpentSeconds) {
-              console.log(`Using saved progress (${savedProgressSeconds}s) instead of server value (${timeSpentSeconds}s)`);
-              timeSpentSeconds = savedProgressSeconds;
-            }
+            // Always use the saved progress value from local storage 
+            console.log(`Using saved progress (${savedProgressSeconds}s) instead of server value (${timeSpentSeconds}s)`);
+            timeSpentSeconds = savedProgressSeconds;
           }
           
           console.log(`Setting time elapsed to: ${timeSpentSeconds} seconds (${Math.round(timeSpentSeconds / 60)} minutes)`);
@@ -331,6 +329,15 @@ export default function TaskTimer({
   
   // Handle reset button click
   const resetTimer = () => {
+    // Set local timeElapsed to 0 immediately for better UI response
+    setTimeElapsed(0);
+    
+    // Save the zero value to local storage immediately
+    const progressKey = `timer_progress_${taskId}`;
+    localStorage.setItem(progressKey, "0");
+    console.log(`Immediately saved 0 progress for task ${taskId} to local storage on reset`);
+    
+    // Then run the mutation to save to server
     resetTimerMutation.mutate();
   };
 
