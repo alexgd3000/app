@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useTimerSystem } from '@/hooks/useTimerSystem';
+import { apiRequest } from '@/lib/queryClient';
 import TimerDisplay from './TimerDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,26 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     // This prevents any unwanted navigation side effects
     if (currentTask && currentTask.completed) {
       console.log('Marking current task as incomplete without triggering navigation:', currentTask.taskId);
+      
+      // First directly update the server to ensure the task is marked as incomplete
+      // This ensures we're not relying on just the client-side state
+      apiRequest(
+        "PUT",
+        `/api/schedule/${currentTask.id}`,
+        { completed: false }
+      ).then(() => {
+        apiRequest(
+          "PUT",
+          `/api/tasks/${currentTask.taskId}`,
+          { completed: false }
+        ).then(() => {
+          console.log('Successfully marked task as incomplete on server');
+        });
+      }).catch((error: Error) => {
+        console.error('Failed to mark task as incomplete:', error);
+      });
+      
+      // Also update local state via the undoTaskCompletion function
       undoTaskCompletion(currentTask.taskId, currentTask.id, false, true); // Don't make active, skip notify
     }
     
