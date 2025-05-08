@@ -94,13 +94,19 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       // Get assignmentIds
       const assignmentIds = sortedAssignments.map((a: any) => a.id);
       
-      // Create a date object from today with the specified start time
+      // Create a date object from today
       const today = new Date();
-      const [hours, minutes] = startTime.split(':').map(Number);
-      today.setHours(hours, minutes, 0, 0);
       
       // Check if the start time is valid (not empty and has proper format)
       const isValidStartTime = startTime && /^\d{2}:\d{2}$/.test(startTime);
+      
+      // Only set specific hours/minutes if the time is valid
+      if (isValidStartTime) {
+        const [hours, minutes] = startTime.split(':').map(Number);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          today.setHours(hours, minutes, 0, 0);
+        }
+      }
       
       // Generate a schedule with available minutes if provided
       const payload: any = {
