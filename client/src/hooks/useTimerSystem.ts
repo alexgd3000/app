@@ -353,7 +353,11 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       pauseTimer(activeTaskId);
     }
     
+    // Simply make the task active without resetting its progress
     setActiveTaskId(taskId);
+    
+    // No need to reset the timer here, as we want to preserve the time progress
+    // This ensures when switching between tasks, time progress for each task is maintained
   };
   
   return {
