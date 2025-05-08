@@ -231,8 +231,14 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   const completeTask = async (taskId: number, scheduleItemId: number) => {
     if (!timerStates[taskId]) return;
     
-    // Pause the timer first
-    pauseTimer(taskId);
+    // Pause the timer first but don't trigger API calls yet
+    setTimerStates(prev => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        isActive: false
+      }
+    }));
     
     try {
       // Update local state immediately for UI feedback
@@ -245,15 +251,13 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Update the schedule item
-      await apiRequest(
-        "PUT", 
-        `/api/schedule/${scheduleItemId}`, 
-        { completed: true }
-      );
+      // Save timer states to localStorage before API calls
+      saveTimerStates();
       
-      // Update the task
+      // Calculate minutes spent
       const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
+      
+      // Update the task first
       await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
@@ -263,8 +267,17 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       );
       
-      // Notify parent to refresh UI
-      onTimerComplete(taskId);
+      // Then update the schedule item
+      await apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
+        { completed: true }
+      );
+      
+      // Notify parent to refresh UI after a small delay to avoid race conditions
+      setTimeout(() => {
+        onTimerComplete(taskId);
+      }, 300);
     } catch (error) {
       console.error("Failed to complete task:", error);
       
@@ -276,10 +289,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
           isCompleted: false
         }
       }));
+      
+      // Save reverted state
+      saveTimerStates();
     }
-    
-    // Save updated states
-    saveTimerStates();
   };
   
   // Undo task completion - toggle a task back to incomplete state
@@ -296,17 +309,20 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Update the schedule item
-      await apiRequest(
-        "PUT", 
-        `/api/schedule/${scheduleItemId}`, 
-        { completed: false }
-      );
+      // Save timer states to localStorage before API calls
+      saveTimerStates();
       
-      // Update the task
+      // Update the task first
       await apiRequest(
         "PUT",
         `/api/tasks/${taskId}`,
+        { completed: false }
+      );
+      
+      // Then update the schedule item
+      await apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
         { completed: false }
       );
       
@@ -316,8 +332,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         setActiveTaskId(taskId);
       }
       
-      // Always notify parent to refresh UI
-      onTimerComplete(taskId);
+      // Notify parent to refresh UI after a small delay to avoid race conditions
+      setTimeout(() => {
+        onTimerComplete(taskId);
+      }, 300);
     } catch (error) {
       console.error("Failed to undo task completion:", error);
       
@@ -329,10 +347,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
           isCompleted: true // Revert back to completed
         }
       }));
+      
+      // Save reverted state
+      saveTimerStates();
     }
-    
-    // Save updated states
-    saveTimerStates();
   };
   
   // Update a timer's elapsed time

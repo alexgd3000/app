@@ -86,11 +86,19 @@ export default function TaskTimerSystem({
     
     const previousTask = sortedSchedule[currentTaskIndex - 1];
     
-    // Log the current and previous task states for debugging
-    console.log('Navigating to previous task:', previousTask.taskId);
+    // Pause the current timer and save state
+    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
+      pauseTimer(activeTaskId);
+    }
     
-    // Simply switch to the previous task
-    switchToTask(previousTask.taskId);
+    // Small delay to ensure state is saved before switch
+    setTimeout(() => {
+      // Log the current and previous task states for debugging
+      console.log('Navigating to previous task:', previousTask.taskId);
+      
+      // Simply switch to the previous task
+      switchToTask(previousTask.taskId);
+    }, 50);
   };
   
   // Simple navigation to next task - no completion logic
@@ -99,11 +107,19 @@ export default function TaskTimerSystem({
     
     const nextTask = sortedSchedule[currentTaskIndex + 1];
     
-    // Log the navigation
-    console.log('Navigating to next task:', nextTask.taskId);
+    // Pause the current timer and save state
+    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
+      pauseTimer(activeTaskId);
+    }
     
-    // Simply switch to the next task
-    switchToTask(nextTask.taskId);
+    // Small delay to ensure state is saved before switch
+    setTimeout(() => {
+      // Log the navigation
+      console.log('Navigating to next task:', nextTask.taskId);
+      
+      // Simply switch to the next task
+      switchToTask(nextTask.taskId);
+    }, 50);
   };
   
   // If there's no current task but there are tasks in the schedule, pick the first one
@@ -229,7 +245,16 @@ export default function TaskTimerSystem({
                 className={`px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50 transition-colors ${
                   isCurrentTask ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                 }`}
-                onClick={() => switchToTask(item.taskId)}
+                onClick={() => {
+                  // Pause any active timer first
+                  if (activeTaskId && timerStates[activeTaskId]?.isActive) {
+                    pauseTimer(activeTaskId);
+                  }
+                  // Small delay to ensure state is saved before switching
+                  setTimeout(() => {
+                    switchToTask(item.taskId);
+                  }, 50);
+                }}
               >
                 {/* Status indicator - made clickable */}
                 <div 
