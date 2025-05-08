@@ -58,6 +58,6 @@
 
   /* Fix time input icon spacing to prevent overlap with text */
   input[type="time"] {
-    @apply pr-10;
+    @apply pr-12;
   }
 }

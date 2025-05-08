@@ -96,7 +96,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
       // Always pick the first task in chronological order
       switchToTask(sortedSchedule[0].taskId);
     }
-  }, [sortedSchedule.length]);
+  }, [currentTask, sortedSchedule, activeTaskId, switchToTask]);
   
   // Pass the resetAllTimers function to the parent component
   useEffect(() => {
