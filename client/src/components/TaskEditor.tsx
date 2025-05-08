@@ -26,6 +26,16 @@ import { Badge } from "@/components/ui/badge";
 // Task form schema
 const taskFormSchema = insertTaskSchema.extend({
   id: z.number().optional(),
+  // Add support for string input for timeAllocation
+  timeAllocation: z.union([
+    z.string().transform((val) => parseInt(val, 10) || 0),
+    z.number()
+  ]),
+  // Add support for string input for timeSpent
+  timeSpent: z.union([
+    z.string().transform((val) => parseInt(val, 10) || 0),
+    z.number()
+  ]).optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -301,13 +311,52 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
         </p>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => (
+          {tasks.map((task, index) => (
             <Card
               key={task.id}
+              draggable={editingTaskId !== task.id}
+              onDragStart={(e) => {
+                // Set the dragged task's ID as data
+                e.dataTransfer.setData('text/plain', task.id.toString());
+                // Set a custom drag image/effect
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragOver={(e) => {
+                // Prevent default to allow drop
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                // Get the ID of the dragged task
+                const draggedTaskId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                // Don't do anything if dropping on the same task
+                if (draggedTaskId === task.id) return;
+                
+                // Find the positions
+                const draggedTaskIndex = tasks.findIndex(t => t.id === draggedTaskId);
+                const targetTaskIndex = index;
+                
+                if (draggedTaskIndex < 0) return;
+                
+                // Create a new array with the reordered tasks
+                const reorderedTasks = [...tasks];
+                const [movedTask] = reorderedTasks.splice(draggedTaskIndex, 1);
+                reorderedTasks.splice(targetTaskIndex, 0, movedTask);
+                
+                // Update the order property and prepare for API call
+                const tasksWithNewOrder = reorderedTasks.map((t, i) => ({
+                  id: t.id,
+                  order: i
+                }));
+                
+                // Call the reorder API
+                reorderMutation.mutate(tasksWithNewOrder);
+              }}
               className={`p-3 ${
                 editingTaskId === task.id 
                   ? "ring-2 ring-primary" 
-                  : "hover:bg-muted/50"
+                  : "hover:bg-muted/50 cursor-move"
               }`}
             >
               {editingTaskId === task.id ? (
