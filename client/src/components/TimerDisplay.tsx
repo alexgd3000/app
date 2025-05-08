@@ -74,105 +74,118 @@ export default function TimerDisplay({
   };
 
   return (
-    <Card className="p-3 border border-primary/10 shadow-sm">
-      <div className="space-y-3">
-        {/* Header with task info and progress */}
-        <div className="flex items-center justify-between gap-2">
+    <Card className="border border-primary/10 shadow-sm">
+      <div className="p-3">
+        {/* Header with task info */}
+        <div className="flex items-center justify-between gap-2 mb-1">
           <div className="flex-grow">
             <div className="flex items-center gap-1">
-              {timerState.isCompleted && <CheckCircle className="h-4 w-4 text-green-500" />}
+              {timerState.isCompleted ? (
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+              ) : timerState.isActive ? (
+                <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
+              )}
               <h3 className="text-sm font-medium line-clamp-1">
                 {assignment.title}: {task.description}
               </h3>
-              <Badge variant="outline" className="ml-1 text-[10px] px-2 py-0 h-5">
-                {taskProgress ? `${taskProgress.current}/${taskProgress.total}` : "0/0"}
-              </Badge>
             </div>
+          </div>
+          
+          <div className="flex-shrink-0 flex items-center gap-1">
+            <Badge variant="outline" className="text-[10px] px-2 py-0 h-5">
+              {taskProgress ? `${taskProgress.current}/${taskProgress.total}` : "0/0"}
+            </Badge>
             
-            {/* Timer with allocated time */}
-            <div className="flex items-center mt-1">
-              <span className="text-lg font-medium text-gray-700 mr-2">
-                {formatTime(timerState.timeElapsed)}
-              </span>
-              <Badge variant="outline" className="text-xs">
-                {formatDuration(task.timeAllocation)}
-              </Badge>
-              
-              {/* Status badge */}
-              {timerState.isCompleted ? (
-                <Badge variant="outline" className="ml-auto text-xs bg-green-50 text-green-700 border-green-200">
-                  Completed
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  {timerState.isActive ? "Active" : "Paused"}
-                </Badge>
-              )}
-            </div>
+            <Badge variant="outline" className="text-[10px] px-2 py-0 h-5">
+              {formatDuration(task.timeAllocation)}
+            </Badge>
           </div>
         </div>
         
-        {/* Progress bar */}
-        <Progress value={progressPercentage} className="h-1.5" />
+        {/* Timer display */}
+        <div className="flex items-center mb-1">
+          <span className="text-xl font-medium text-gray-700">
+            {formatTime(timerState.timeElapsed)}
+          </span>
+          
+          {/* Status badge */}
+          {timerState.isCompleted ? (
+            <Badge variant="outline" className="ml-auto text-xs bg-green-50 text-green-700 border-green-200">
+              Completed
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700 border-blue-200">
+              {timerState.isActive ? "Active" : "Paused"}
+            </Badge>
+          )}
+        </div>
         
-        {/* All controls in a single row */}
-        <div className="flex items-center justify-between gap-1 mt-2">
-          {/* Previous button */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-2 text-xs flex-1"
-            onClick={onPrevious}
-            disabled={!onPrevious}
-          >
-            <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Prev
-          </Button>
-          
-          {/* Play/Pause button */}
-          <Button
-            size="sm"
-            variant={timerState.isActive ? "outline" : "default"}
-            className="h-8 px-4 text-xs flex-1"
-            onClick={timerState.isActive ? onPause : onPlay}
-            disabled={timerState.isCompleted}
-          >
-            {timerState.isActive ? (
-              <><Pause className="h-3 w-3 mr-1" /> Pause</>
-            ) : (
-              <><Play className="h-3 w-3 mr-1" /> Play</>
-            )}
-          </Button>
-          
-          {/* Next/Complete button */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-2 text-xs flex-1"
-            onClick={timerState.isCompleted ? onNext : onComplete}
-            disabled={!onNext && timerState.isCompleted}
-          >
-            Next
-            <svg className="h-3 w-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </Button>
-          
-          {/* Reset button */}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 flex-shrink-0"
-            onClick={onReset}
-            disabled={timerState.timeElapsed === 0 || timerState.isCompleted}
-            title="Reset Timer"
-          >
-            <RotateCcw className="h-3 w-3" />
-          </Button>
+        {/* Progress bar */}
+        <Progress value={progressPercentage} className="h-2 mb-2" />
+        
+        {/* Controls in a single row */}
+        <div className="flex items-center justify-between gap-1">
+          {/* Navigation and action buttons in a single row */}
+          <div className="grid grid-cols-4 gap-1 w-full">
+            {/* Previous button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-1 text-xs"
+              onClick={onPrevious}
+              disabled={!onPrevious}
+            >
+              <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              Prev
+            </Button>
+            
+            {/* Play/Pause button */}
+            <Button
+              size="sm"
+              variant={timerState.isActive ? "outline" : "default"}
+              className="h-8 text-xs"
+              onClick={timerState.isActive ? onPause : onPlay}
+              disabled={timerState.isCompleted}
+            >
+              {timerState.isActive ? (
+                <><Pause className="h-3 w-3 mr-1" /> Pause</>
+              ) : (
+                <><Play className="h-3 w-3 mr-1" /> Play</>
+              )}
+            </Button>
+            
+            {/* Reset button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={onReset}
+              disabled={timerState.timeElapsed === 0 || timerState.isCompleted}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset
+            </Button>
+            
+            {/* Next/Complete button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-1 text-xs"
+              onClick={timerState.isCompleted ? onNext : onComplete}
+              disabled={!onNext && timerState.isCompleted}
+            >
+              {timerState.isCompleted ? "Next" : "Complete"}
+              <svg className="h-3 w-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </Button>
+          </div>
         </div>
         
         {/* Undo complete button - only shown when task is completed */}

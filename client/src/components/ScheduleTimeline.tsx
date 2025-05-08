@@ -226,11 +226,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       type="number"
                       min="0"
                       placeholder="Hours"
-                      className="w-[90px] pl-10"
+                      className="w-[90px]"
                       value={availableHours}
                       onChange={(e) => setAvailableHours(e.target.value)}
                     />
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Hours</span>
                   </div>
                   <div className="relative">
                     <Input
@@ -238,11 +237,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       min="0"
                       max="59"
                       placeholder="Mins"
-                      className="w-[90px] pl-10"
+                      className="w-[90px]"
                       value={availableMinutes}
                       onChange={(e) => setAvailableMinutes(e.target.value)}
                     />
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Mins</span>
                   </div>
                 </div>
               </div>
@@ -366,11 +364,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                         type="number"
                         min="0"
                         placeholder="Hours"
-                        className="w-[90px] pl-10"
+                        className="w-[90px]"
                         value={availableHours}
                         onChange={(e) => setAvailableHours(e.target.value)}
                       />
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Hours</span>
                     </div>
                     <div className="relative">
                       <Input
@@ -378,11 +375,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                         min="0"
                         max="59"
                         placeholder="Mins"
-                        className="w-[90px] pl-10"
+                        className="w-[90px]"
                         value={availableMinutes}
                         onChange={(e) => setAvailableMinutes(e.target.value)}
                       />
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 text-xs">Mins</span>
                     </div>
                   </div>
                 </div>

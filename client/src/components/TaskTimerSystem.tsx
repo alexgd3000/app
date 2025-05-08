@@ -76,7 +76,13 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
       );
     }
     
-    // If previous task was completed, undo its completion
+    // If we're on the last task and it's completed, undo its completion first
+    if (currentTask && currentTask.completed && currentTaskIndex === sortedSchedule.length - 1) {
+      console.log('Undoing completion of current (last) task:', currentTask.taskId);
+      undoTaskCompletion(currentTask.taskId, currentTask.id);
+    }
+    
+    // Now handle the previous task
     if (previousTask.completed) {
       console.log('Undoing completion of previous task:', previousTask.taskId);
       undoTaskCompletion(previousTask.taskId, previousTask.id);
