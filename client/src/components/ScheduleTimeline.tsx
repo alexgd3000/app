@@ -201,8 +201,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  // Move to the previous task in the schedule
-  const moveToPreviousTask = () => {
+  // Move to the previous task in the schedule and mark it as not complete
+  const moveToPreviousTask = async () => {
     if (!currentTask || scheduleData.length === 0) return;
     
     // Get all schedule items sorted by start time
@@ -213,9 +213,49 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     // Find the index of the current task
     const currentIndex = sortedItems.findIndex(item => item.id === currentTask.id);
     
-    // If there is a previous task, set it as current
+    // If there is a previous task, go to it and mark it as not complete
     if (currentIndex > 0) {
-      setCurrentTask(sortedItems[currentIndex - 1]);
+      const previousTask = sortedItems[currentIndex - 1];
+      
+      // Mark the previous task as not complete if it was completed
+      if (previousTask.completed) {
+        try {
+          // Update schedule item
+          await apiRequest(
+            "PUT", 
+            `/api/schedule/${previousTask.id}`, 
+            { completed: false }
+          );
+          
+          // Update task
+          await apiRequest(
+            "PUT", 
+            `/api/tasks/${previousTask.taskId}`, 
+            { completed: false }
+          );
+          
+          // Refresh queries
+          queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+          
+          // This will be set after the queries are invalidated and data is refetched
+          setTimeout(() => {
+            const updatedScheduleData = scheduleData.map(item => 
+              item.id === previousTask.id ? { ...item, completed: false } : item
+            );
+            setCurrentTask({ ...previousTask, completed: false });
+          }, 100);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to update task status",
+            variant: "destructive"
+          });
+        }
+      } else {
+        // If the task wasn't completed, just navigate to it
+        setCurrentTask(previousTask);
+      }
     }
   };
   
@@ -233,7 +273,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     
     // If there is a next task, set it as current
     if (currentIndex < sortedItems.length - 1) {
-      setCurrentTask(sortedItems[currentIndex + 1]);
+      const nextTask = sortedItems[currentIndex + 1];
+      setCurrentTask(nextTask);
     }
   };
 
@@ -491,6 +532,18 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 const inProgress = isItemInProgress(item);
                 const completed = item.completed;
                 
+                // Determine the status label
+                let statusLabel = "Not started";
+                let statusClass = "bg-gray-100 text-gray-700";
+                
+                if (completed) {
+                  statusLabel = "Completed";
+                  statusClass = "bg-green-50 text-green-700 border-green-100";
+                } else if (inProgress) {
+                  statusLabel = "In progress";
+                  statusClass = "bg-blue-50 text-blue-700 border-blue-100";
+                }
+                
                 return (
                   <li key={item.id} className="relative pl-10">
                     <div className="flex items-center">
@@ -499,39 +552,33 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       >
                         <div 
                           className={`w-2 h-2 rounded-full ${
-                            completed ? 'bg-gray-400' : inProgress ? 'bg-emerald-500' : 'bg-gray-400'
+                            completed ? 'bg-green-500' : inProgress ? 'bg-blue-500' : 'bg-gray-400'
                           }`}
                         ></div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className={`${statusClass} text-xs px-2 py-1 rounded border mr-2 min-w-[90px] text-center`}>
+                            {statusLabel}
+                          </span>
                           <h3 className="text-sm font-medium text-gray-900">
                             {item.task && item.assignment
                               ? `${item.assignment.title}: ${item.task.description}`
                               : "Unknown task"}
                           </h3>
-                          {inProgress && (
-                            <span className="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded">
-                              In Progress
-                            </span>
-                          )}
-                          {completed && (
-                            <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-                              Completed
-                            </span>
-                          )}
-                          {!inProgress && !completed && (
+                          
+                          {!completed && (
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              className="text-xs h-7 px-2"
+                              className="text-xs h-7 px-2 ml-auto"
                               onClick={() => handleMarkComplete(item.id)}
                             >
-                              Mark Complete
+                              Complete
                             </Button>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-gray-500 mt-0.5 ml-[106px]">
                           {formatTimeRange(item.startTime, item.endTime)}
                         </p>
                       </div>

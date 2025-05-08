@@ -88,8 +88,13 @@ export default function TaskTimer({
     }
   });
 
-  // Update time elapsed when a task is first loaded
+  // Update time elapsed when a task is first loaded or when taskId changes
   useEffect(() => {
+    // Reset the timer state first
+    setIsActive(false);
+    setLastCompletedState(null);
+    setTimeElapsed(0);
+    
     // When a task is loaded, check if it has spent time already
     const fetchTaskDetails = async () => {
       try {
@@ -99,6 +104,14 @@ export default function TaskTimer({
           // If task has time spent, initialize the timer with that value (converted to seconds)
           if (taskData.timeSpent > 0) {
             setTimeElapsed(taskData.timeSpent * 60);
+          }
+          
+          // Set completed state if already completed
+          if (taskData.completed) {
+            setLastCompletedState({
+              timeSpent: taskData.timeSpent * 60,
+              isCompleted: true
+            });
           }
         }
       } catch (error) {
@@ -265,22 +278,20 @@ export default function TaskTimer({
         
         {/* Music player style controls */}
         <div className="flex justify-center space-x-3 items-center">
-          {/* Previous task button */}
+          {/* Previous task button - always goes to previous task */}
           <Button
             size="icon"
             variant="outline"
             className="rounded-full h-9 w-9"
             title="Previous task"
             onClick={() => {
-              if (isCompleted) {
-                // If current task is completed, undo its completion
-                undoCompleteTask();
-              } else if (onPrevious) {
-                // Otherwise, navigate to the previous task
+              if (onPrevious) {
+                // Always just navigate to the previous task
+                // The parent component will handle uncompleting it
                 onPrevious();
               }
             }}
-            disabled={undoCompleteMutation.isPending}
+            disabled={undoCompleteMutation.isPending || !onPrevious}
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M1.94976 2.74963C1.94976 2.44573 2.19605 2.19971 2.49976 2.19971C2.80347 2.19971 3.04976 2.44573 3.04976 2.74963V7.24963L13.0498 2.24966C13.2806 2.11496 13.5626 2.12833 13.7824 2.28385C14.0022 2.43938 14.0839 2.70401 13.9863 2.93814L13.9859 2.93902C13.9826 2.94587 13.9789 2.95267 13.975 2.95938C13.9714 2.96563 13.9678 2.97186 13.9641 2.97803L13.0498 4.74963L13.0498 10.2496L13.9641 12.0212C13.9678 12.0274 13.9714 12.0336 13.975 12.0399C13.9789 12.0466 13.9826 12.0534 13.9859 12.0602L13.9863 12.0611C14.0839 12.2952 14.0022 12.5599 13.7824 12.7154C13.5626 12.8709 13.2806 12.8843 13.0498 12.7496L3.04976 7.74963V12.2496C3.04976 12.5535 2.80347 12.7996 2.49976 12.7996C2.19605 12.7996 1.94976 12.5535 1.94976 12.2496V2.74963Z" fill="currentColor" />
