@@ -430,10 +430,24 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                   // Refresh the assignments list to show updated status
                   queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
                   queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+                  
+                  // Also refresh individual task data for each assignment
+                  const assignmentIds = new Set(scheduleData.map(item => 
+                    item.task?.assignmentId).filter(Boolean));
+                    
+                  assignmentIds.forEach(assignmentId => {
+                    queryClient.invalidateQueries({ 
+                      queryKey: [`/api/assignments/${assignmentId}/tasks`] 
+                    });
+                  });
+                  
                   toast({
                     title: "Assignments refreshed",
                     description: "Assignment list has been updated."
                   });
+                  
+                  // Also refresh schedule data
+                  onRefresh();
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
