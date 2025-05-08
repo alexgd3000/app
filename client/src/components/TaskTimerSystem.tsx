@@ -76,14 +76,36 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
       );
     }
     
+    // Check if all tasks are completed
+    const allTasksCompleted = sortedSchedule.every(task => task.completed);
+    
+    // If all tasks are completed, mark both the current and previous tasks as incomplete
+    if (allTasksCompleted) {
+      console.log('All tasks completed, marking current and previous tasks as incomplete');
+      if (currentTask) {
+        console.log('Undoing completion of current task:', currentTask.taskId);
+        undoTaskCompletion(currentTask.taskId, currentTask.id);
+      }
+      
+      console.log('Undoing completion of previous task:', previousTask.taskId);
+      undoTaskCompletion(previousTask.taskId, previousTask.id);
+    }
     // If we're on the last task and it's completed, undo its completion first
-    if (currentTask && currentTask.completed && currentTaskIndex === sortedSchedule.length - 1) {
+    else if (currentTask && currentTask.completed && currentTaskIndex === sortedSchedule.length - 1) {
       console.log('Undoing completion of current (last) task:', currentTask.taskId);
       undoTaskCompletion(currentTask.taskId, currentTask.id);
+      
+      // Now handle the previous task
+      if (previousTask.completed) {
+        console.log('Undoing completion of previous task:', previousTask.taskId);
+        undoTaskCompletion(previousTask.taskId, previousTask.id);
+      } else {
+        console.log('Switching to previous task:', previousTask.taskId);
+        switchToTask(previousTask.taskId);
+      }
     }
-    
-    // Now handle the previous task
-    if (previousTask.completed) {
+    // Regular case - handle previous task without changing current
+    else if (previousTask.completed) {
       console.log('Undoing completion of previous task:', previousTask.taskId);
       undoTaskCompletion(previousTask.taskId, previousTask.id);
     } else {
