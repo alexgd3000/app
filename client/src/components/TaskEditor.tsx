@@ -60,12 +60,37 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
   // Update task order
   const reorderMutation = useMutation({
     mutationFn: async (tasks: {id: number, order: number}[]) => {
-      const response = await apiRequest(
-        "PUT", 
-        "/api/tasks/reorder", 
-        { tasks }
-      );
-      return response.json();
+      try {
+        const response = await apiRequest(
+          "PUT", 
+          "/api/tasks/reorder", 
+          { tasks }
+        );
+        return response.json();
+      } catch (error: any) {
+        // Improve error message by parsing the response if possible
+        let errorMessage = "Failed to reorder tasks";
+        
+        // If there's a response JSON with an error message, use that
+        if (error.response) {
+          try {
+            const errorData = await error.response.json();
+            if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+            if (errorData.details) {
+              errorMessage = errorData.details;
+            }
+          } catch (e) {
+            // If we can't parse the error response, use the original error
+            errorMessage = error.message;
+          }
+        } else {
+          errorMessage = error.message;
+        }
+        
+        throw new Error(errorMessage);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 

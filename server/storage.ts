@@ -351,12 +351,20 @@ export class MemStorage implements IStorage {
   }
   
   async updateTasksOrder(tasks: {id: number, order: number}[]): Promise<boolean> {
-    for (const { id, order } of tasks) {
+    // Check if all tasks exist first
+    for (const { id } of tasks) {
       const task = this.tasks.get(id);
-      if (task) {
-        this.tasks.set(id, { ...task, order });
+      if (!task) {
+        throw new Error(`Task with ID ${id} not found`);
       }
     }
+    
+    // If we get here, all tasks exist, so update them
+    for (const { id, order } of tasks) {
+      const task = this.tasks.get(id);
+      this.tasks.set(id, { ...task!, order });
+    }
+    
     return true;
   }
   

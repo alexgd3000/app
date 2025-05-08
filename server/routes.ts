@@ -181,8 +181,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Tasks must be an array" });
       }
       
-      await storage.updateTasksOrder(tasks);
-      return res.json({ message: "Tasks reordered successfully" });
+      try {
+        await storage.updateTasksOrder(tasks);
+        return res.json({ message: "Tasks reordered successfully" });
+      } catch (err: any) {
+        // Specific task not found error
+        if (err.message && err.message.includes("Task with ID")) {
+          return res.status(404).json({ message: "Task not found", details: err.message });
+        }
+        throw err; // Re-throw if it's a different error
+      }
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
