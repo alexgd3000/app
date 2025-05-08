@@ -66,45 +66,63 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     // Log the current and previous task states for debugging
     console.log('Current task:', currentTask.taskId, 'Previous task:', previousTask.taskId);
     
-    // Mark the current task as incomplete (if completed) but skip the notification
-    // This prevents any unwanted navigation side effects
-    if (currentTask && currentTask.completed) {
-      console.log('Marking current task as incomplete without triggering navigation:', currentTask.taskId);
-      
-      // First directly update the server to ensure the task is marked as incomplete
-      // This ensures we're not relying on just the client-side state
-      apiRequest(
-        "PUT",
-        `/api/schedule/${currentTask.id}`,
-        { completed: false }
-      ).then(() => {
-        apiRequest(
-          "PUT",
-          `/api/tasks/${currentTask.taskId}`,
-          { completed: false }
-        ).then(() => {
-          console.log('Successfully marked task as incomplete on server');
+    // First, get the current state directly from the server
+    fetch(`/api/schedule/${currentTask.id}`)
+      .then(res => res.json())
+      .then(scheduleItem => {
+        console.log('Current schedule item from server:', scheduleItem);
+        
+        // Force UI refresh by invalidating queries
+        queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+        
+        // Explicitly update schedule item to mark as incomplete
+        return fetch(`/api/schedule/${currentTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: false })
         });
-      }).catch((error: Error) => {
+      })
+      .then(res => res.json())
+      .then(() => {
+        // Now update the task to be incomplete
+        return fetch(`/api/tasks/${currentTask.taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: false })
+        });
+      })
+      .then(res => res.json())
+      .then(() => {
+        console.log('Successfully marked task as incomplete on server');
+        
+        // Force UI refresh by invalidating queries
+        queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+        
+        // Update local timer states to match server - explicitly update the completed status
+        setTimerStates(prev => ({
+          ...prev,
+          [currentTask.taskId]: {
+            ...prev[currentTask.taskId],
+            isCompleted: false
+          }
+        }));
+        
+        // Then explicitly switch to the previous task in the sequence
+        console.log('Explicitly switching to previous task:', previousTask.taskId);
+        switchToTask(previousTask.taskId);
+        
+        // Also trigger parent refresh
+        onRefresh();
+      })
+      .catch((error: Error) => {
         console.error('Failed to mark task as incomplete:', error);
+        toast({
+          title: "Error",
+          description: "Failed to mark task as incomplete",
+          variant: "destructive"
+        });
       });
-      
-      // Also update local state via the undoTaskCompletion function
-      undoTaskCompletion(currentTask.taskId, currentTask.id, false, true); // Don't make active, skip notify
-    }
-    
-    // We need to use setTimeout to ensure the task state update completes
-    // before we switch tasks to avoid race conditions
-    setTimeout(() => {
-      // Then explicitly switch to the previous task in the sequence
-      console.log('Explicitly switching to previous task:', previousTask.taskId);
-      switchToTask(previousTask.taskId);
-      
-      // Log the states after switching for debugging
-      setTimeout(() => {
-        console.log('Timer states after going back:', timerStates);
-      }, 100);
-    }, 100);
   };
   
   // Handle moving to next task
@@ -228,15 +246,55 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent triggering the parent div's onClick
                     if (item.completed) {
-                      // Uncomplete the task without making it active and skip notification
-                      undoTaskCompletion(item.taskId, item.id, false, true);
-                      
-                      // Keep the current task active - use setTimeout to avoid race conditions
-                      if (currentTask) {
-                        setTimeout(() => {
-                          switchToTask(currentTask.taskId);
-                        }, 50);
-                      }
+                      // Use the same direct fetch approach for consistency
+                      fetch(`/api/schedule/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ completed: false })
+                      })
+                      .then(res => res.json())
+                      .then(() => {
+                        return fetch(`/api/tasks/${item.taskId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ completed: false })
+                        });
+                      })
+                      .then(res => res.json())
+                      .then(() => {
+                        console.log('Successfully marked task as incomplete on server');
+                        
+                        // Force UI refresh
+                        queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+                        
+                        // Update local state
+                        setTimerStates(prev => ({
+                          ...prev,
+                          [item.taskId]: {
+                            ...prev[item.taskId],
+                            isCompleted: false
+                          }
+                        }));
+                        
+                        // Keep the current task active
+                        if (currentTask) {
+                          setTimeout(() => {
+                            switchToTask(currentTask.taskId);
+                          }, 50);
+                        }
+                        
+                        // Also trigger parent refresh
+                        onRefresh();
+                      })
+                      .catch((error: Error) => {
+                        console.error('Failed to mark task as incomplete:', error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to mark task as incomplete",
+                          variant: "destructive"
+                        });
+                      });
                     } else {
                       // Complete the task and move to next task
                       switchToTask(item.taskId); // First switch to this task
