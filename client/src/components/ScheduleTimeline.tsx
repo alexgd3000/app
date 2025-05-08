@@ -353,8 +353,19 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               duration={Math.round((new Date(currentTask.endTime).getTime() - new Date(currentTask.startTime).getTime()) / (1000 * 60))}
               isCompleted={currentTask.completed}
               onComplete={() => {
-                // Force refresh the schedule
+                // Force refresh the schedule and assignments
                 queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+                
+                // Find the next task in the schedule
+                const nextTask = scheduleData
+                  .filter(item => !item.completed && item.id !== currentTask.id)
+                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
+                
+                if (nextTask) {
+                  setCurrentTask(nextTask);
+                }
+                
                 onRefresh();
               }}
             />
@@ -479,35 +490,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <div className="text-sm text-gray-500">
               <strong>{scheduleData.length}</strong> tasks scheduled for today
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex space-x-2">
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="Hours"
-                  className="w-[80px]"
-                  value={availableHours}
-                  onChange={(e) => setAvailableHours(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  min="0"
-                  max="59"
-                  placeholder="Mins"
-                  className="w-[70px]"
-                  value={availableMinutes}
-                  onChange={(e) => setAvailableMinutes(e.target.value)}
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => generateScheduleMutation.mutate()}
-                disabled={generateScheduleMutation.isPending}
-              >
-                Regenerate
-              </Button>
-            </div>
+            {/* No action buttons needed here - users can use the inputs at the top of the card */}
           </div>
         </CardFooter>
       )}

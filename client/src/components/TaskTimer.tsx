@@ -35,24 +35,45 @@ export default function TaskTimer({
   const [isActive, setIsActive] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [initialTime] = useState(Date.now());
+  const [lastCompletedState, setLastCompletedState] = useState<{
+    timeSpent: number;
+    isCompleted: boolean;
+  } | null>(null);
 
   // Mutations for updating the task status
   const markCompletedMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(
+      // First, mark the schedule item as completed
+      const scheduleResponse = await apiRequest(
         "PUT", 
         `/api/schedule/${scheduleItemId}`, 
         { completed: true }
       );
-      return response.json();
+      
+      // Then, mark the actual task as completed in the assignment
+      const taskResponse = await apiRequest(
+        "PUT",
+        `/api/tasks/${taskId}`,
+        { completed: true, timeSpent: Math.max(Math.round(timeElapsed / 60), 1) }
+      );
+      
+      return {
+        scheduleItem: await scheduleResponse.json(),
+        task: await taskResponse.json()
+      };
     },
     onSuccess: () => {
       toast({
         title: "Task completed",
         description: "Great job! Task marked as completed.",
       });
-      onComplete();
+      
+      // Invalidate all relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      
+      // Call the parent component's onComplete callback
+      onComplete();
     },
     onError: (error: Error) => {
       toast({
