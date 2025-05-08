@@ -62,12 +62,33 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     
     const previousTask = sortedSchedule[currentTaskIndex - 1];
     
+    // Log the current task timer state before switching
+    if (currentTask && timerStates[currentTask.taskId]) {
+      console.log('Current task timer state before going back:', 
+        { taskId: currentTask.taskId, timeElapsed: timerStates[currentTask.taskId].timeElapsed }
+      );
+    }
+    
+    // Log the previous task timer state before switching
+    if (timerStates[previousTask.taskId]) {
+      console.log('Previous task timer state before going back:',
+        { taskId: previousTask.taskId, timeElapsed: timerStates[previousTask.taskId].timeElapsed }
+      );
+    }
+    
     // If previous task was completed, undo its completion
     if (previousTask.completed) {
+      console.log('Undoing completion of previous task:', previousTask.taskId);
       undoTaskCompletion(previousTask.taskId, previousTask.id);
     } else {
+      console.log('Switching to previous task:', previousTask.taskId);
       switchToTask(previousTask.taskId);
     }
+    
+    // Log the states after switching
+    setTimeout(() => {
+      console.log('Timer states after going back:', timerStates);
+    }, 100);
   };
   
   // Handle moving to next task
@@ -75,7 +96,28 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     if (!hasNextTask) return;
     
     const nextTask = sortedSchedule[currentTaskIndex + 1];
+    
+    // Log the current task timer state before switching
+    if (currentTask && timerStates[currentTask.taskId]) {
+      console.log('Current task timer state before switching:', 
+        { taskId: currentTask.taskId, timeElapsed: timerStates[currentTask.taskId].timeElapsed }
+      );
+    }
+    
+    // Log the next task timer state before switching
+    if (timerStates[nextTask.taskId]) {
+      console.log('Next task timer state before switching:',
+        { taskId: nextTask.taskId, timeElapsed: timerStates[nextTask.taskId].timeElapsed }
+      );
+    }
+    
+    // Switch to the next task
     switchToTask(nextTask.taskId);
+    
+    // Log the states after switching
+    setTimeout(() => {
+      console.log('Timer states after switching:', timerStates);
+    }, 100);
   };
   
   // If there's no current task but there are tasks in the schedule, pick the first uncompleted one

@@ -37,6 +37,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         savedStates = JSON.parse(saved);
+        console.log('Loaded saved timer states:', savedStates);
       }
     } catch (error) {
       console.error('Error loading timer states from localStorage:', error);
@@ -54,6 +55,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       newTimerStates[taskId] = {
         taskId,
         assignmentId: item.task?.assignmentId || 0,
+        // Important: Preserve the elapsed time from saved state
         timeElapsed: savedState?.timeElapsed || 0,
         isActive: false, // Always start inactive
         isCompleted: item.completed || false,
@@ -61,6 +63,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       };
     });
     
+    console.log('Setting timer states with preserved time:', newTimerStates);
     setTimerStates(newTimerStates);
     
     // Set the active task if one is in progress
@@ -346,18 +349,25 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   
   // Switch to a specific task (make it active)
   const switchToTask = (taskId: number) => {
-    if (!timerStates[taskId]) return;
+    if (!timerStates[taskId]) {
+      console.error('Cannot switch to task - no timer state found for taskId:', taskId);
+      return;
+    }
+    
+    console.log(`Switching to task ${taskId} with current elapsed time:`, timerStates[taskId].timeElapsed);
     
     // If there's a currently active timer, pause it
     if (activeTaskId && activeTaskId !== taskId && timerStates[activeTaskId]?.isActive) {
+      console.log(`Pausing previous active task ${activeTaskId} with elapsed time:`, timerStates[activeTaskId].timeElapsed);
       pauseTimer(activeTaskId);
     }
     
     // Simply make the task active without resetting its progress
+    // This is critical - we just change which task is active without modifying its timeElapsed
     setActiveTaskId(taskId);
     
-    // No need to reset the timer here, as we want to preserve the time progress
-    // This ensures when switching between tasks, time progress for each task is maintained
+    // Save timer states to ensure we persist the current progress
+    saveTimerStates();
   };
   
   return {

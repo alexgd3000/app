@@ -41,18 +41,26 @@ export default function TimerDisplay({
   onPrevious,
   onNext
 }: TimerDisplayProps) {
-  // Calculate progress percentage
-  const progressPercentage = Math.min(
-    Math.round((timerState.timeElapsed / 60 / task.timeAllocation) * 100),
-    100
-  );
-
-  // Format time as mm:ss
+  // Format time as mm:ss - Define this first before using it!
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
+
+  // Calculate progress percentage based on elapsed time
+  const progressPercentage = Math.min(
+    Math.round((timerState.timeElapsed / 60 / task.timeAllocation) * 100),
+    100
+  );
+  
+  // Log timer state for debugging
+  console.log(`Timer display for task ${task.id}:`, {
+    timeElapsed: timerState.timeElapsed,
+    isActive: timerState.isActive,
+    formattedTime: formatTime(timerState.timeElapsed),
+    progressPercentage
+  });
 
   // Format total duration
   const formatDuration = (minutes: number): string => {
