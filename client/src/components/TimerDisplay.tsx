@@ -51,7 +51,17 @@ export default function TimerDisplay({
   const [playTimerComplete] = useSound(timerCompleteSound);
   
   // Keep track of previous completion state to detect changes
-  const prevCompletedRef = useRef(timerState.isCompleted);
+  const prevCompletedRef = useRef(timerState?.isCompleted || false);
+  
+  // Handle case when timerState is not available
+  if (!timerState) {
+    console.error("Timer state is not defined for task:", task.id);
+    return (
+      <Card className="border border-red-200 p-4 text-center">
+        <p className="text-red-500">Timer error: No timer state available for this task</p>
+      </Card>
+    );
+  }
   
   // Format time as mm:ss - Define this first before using it!
   const formatTime = (seconds: number): string => {

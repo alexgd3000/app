@@ -223,7 +223,10 @@ export default function TaskTimerSystem({
                 className={`px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50 transition-colors ${
                   isCurrentTask ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                 }`}
-                onClick={() => switchToTask(item.taskId)}
+                onClick={() => {
+                  console.log('Switching to task with ID:', item.taskId);
+                  switchToTask(item.taskId);
+                }}
               >
                 {/* Status indicator - made clickable */}
                 <div 
