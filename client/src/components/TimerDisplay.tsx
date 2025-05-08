@@ -158,11 +158,14 @@ export default function TimerDisplay({
               Reset
             </Button>
             
-            {/* Toggle completion button */}
+            {/* Toggle completion button with softer colors */}
             <Button
               size="sm"
-              variant={timerState.isCompleted ? "destructive" : "default"}
-              className="h-8 text-xs"
+              variant="outline"
+              className={`h-8 text-xs ${timerState.isCompleted ? 
+                'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-200' : 
+                'bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 border-green-200'
+              }`}
               onClick={timerState.isCompleted ? onUndo : onComplete}
             >
               {timerState.isCompleted ? (
