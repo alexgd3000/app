@@ -234,14 +234,30 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
                 }`}
                 onClick={() => switchToTask(item.taskId)}
               >
-                {/* Status indicator */}
-                <div className="mr-2 flex-shrink-0">
+                {/* Status indicator - made clickable */}
+                <div 
+                  className="mr-2 flex-shrink-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering the parent div's onClick
+                    if (item.completed) {
+                      // Uncomplete the task
+                      undoTaskCompletion(item.taskId, item.id);
+                    } else {
+                      // Complete the task and move to next task
+                      switchToTask(item.taskId); // First switch to this task
+                      setTimeout(() => {
+                        completeTask(item.taskId, item.id); // Then complete it
+                      }, 100);
+                    }
+                  }}
+                  title={item.completed ? "Mark as incomplete" : "Mark as complete"}
+                >
                   {item.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-green-500 hover:text-green-600" />
                   ) : timerState?.isActive ? (
-                    <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse" />
+                    <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse hover:bg-blue-600" />
                   ) : (
-                    <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                    <div className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-gray-500 hover:bg-gray-100" />
                   )}
                 </div>
                 
