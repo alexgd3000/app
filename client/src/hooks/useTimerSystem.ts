@@ -280,7 +280,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   };
   
   // Undo task completion
-  const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
+  const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false, skipNotify: boolean = false) => {
     if (!timerStates[taskId]) return;
     
     try {
@@ -314,8 +314,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         setActiveTaskId(taskId);
       }
       
-      // Notify parent
-      onTimerComplete(taskId);
+      // Notify parent (optional - can be skipped to prevent unwanted navigation)
+      if (!skipNotify) {
+        onTimerComplete(taskId);
+      }
     } catch (error) {
       console.error("Failed to undo task completion:", error);
     }

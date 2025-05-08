@@ -65,20 +65,24 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     // Log the current and previous task states for debugging
     console.log('Current task:', currentTask.taskId, 'Previous task:', previousTask.taskId);
     
-    // Mark the current task as incomplete (if completed) and always switch to previous task
+    // Mark the current task as incomplete (if completed) but skip the notification
+    // This prevents any unwanted navigation side effects
     if (currentTask && currentTask.completed) {
-      console.log('Marking current task as incomplete:', currentTask.taskId);
-      // Mark current task as incomplete but don't make it active
-      undoTaskCompletion(currentTask.taskId, currentTask.id, false);
+      console.log('Marking current task as incomplete without triggering navigation:', currentTask.taskId);
+      undoTaskCompletion(currentTask.taskId, currentTask.id, false, true); // Don't make active, skip notify
     }
     
-    // Then always switch to the previous task in the sequence
-    console.log('Switching to previous task:', previousTask.taskId);
-    switchToTask(previousTask.taskId);
-    
-    // Log the states after switching for debugging
+    // We need to use setTimeout to ensure the task state update completes
+    // before we switch tasks to avoid race conditions
     setTimeout(() => {
-      console.log('Timer states after going back:', timerStates);
+      // Then explicitly switch to the previous task in the sequence
+      console.log('Explicitly switching to previous task:', previousTask.taskId);
+      switchToTask(previousTask.taskId);
+      
+      // Log the states after switching for debugging
+      setTimeout(() => {
+        console.log('Timer states after going back:', timerStates);
+      }, 100);
     }, 100);
   };
   
@@ -163,7 +167,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
         onPause={() => pauseTimer(currentTask.taskId)}
         onReset={() => resetTimer(currentTask.taskId)}
         onComplete={() => completeTask(currentTask.taskId, currentTask.id)}
-        onUndo={() => undoTaskCompletion(currentTask.taskId, currentTask.id)}
+        onUndo={() => undoTaskCompletion(currentTask.taskId, currentTask.id, true, false)}
         onPrevious={hasPreviousTask ? handlePreviousTask : undefined}
         onNext={hasNextTask ? handleNextTask : undefined}
       />
@@ -203,12 +207,14 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent triggering the parent div's onClick
                     if (item.completed) {
-                      // Uncomplete the task without making it active
-                      undoTaskCompletion(item.taskId, item.id, false);
+                      // Uncomplete the task without making it active and skip notification
+                      undoTaskCompletion(item.taskId, item.id, false, true);
                       
-                      // Keep the current task active
+                      // Keep the current task active - use setTimeout to avoid race conditions
                       if (currentTask) {
-                        switchToTask(currentTask.taskId);
+                        setTimeout(() => {
+                          switchToTask(currentTask.taskId);
+                        }, 50);
                       }
                     } else {
                       // Complete the task and move to next task
