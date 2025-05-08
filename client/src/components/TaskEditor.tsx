@@ -303,22 +303,28 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     // Create a copy of the tasks array
     const updatedTasks = [...tasks];
     
-    // Swap the task with the one above it
-    const temp = updatedTasks[taskIndex];
-    updatedTasks[taskIndex] = updatedTasks[taskIndex - 1];
-    updatedTasks[taskIndex - 1] = temp;
+    // Get the tasks we need to swap
+    const taskToMoveUp = updatedTasks[taskIndex];
+    const taskToMoveDown = updatedTasks[taskIndex - 1];
     
-    // Update order properties
-    const tasksWithNewOrder = updatedTasks.map((task, i) => ({
-      id: task.id,
-      order: i,
-      assignmentId: task.assignmentId // Include assignmentId which the backend may require
-    }));
+    // Simple swap of just the two tasks' orders
+    const simplifiedPayload = [
+      { id: taskToMoveUp.id, order: taskIndex - 1 },
+      { id: taskToMoveDown.id, order: taskIndex }
+    ];
     
-    console.log("Tasks being reordered with details:", updatedTasks);
+    console.log("Simplified reorder payload:", simplifiedPayload);
     
-    // Call the reorder API
-    reorderMutation.mutate(tasksWithNewOrder);
+    // Call the reorder API with just the two tasks that need to change
+    reorderMutation.mutate(simplifiedPayload);
+    
+    // Update local state to show immediate change without waiting for refetch
+    const newTasks = [...tasks];
+    // Swap the tasks
+    const temp = newTasks[taskIndex];
+    newTasks[taskIndex] = newTasks[taskIndex - 1];
+    newTasks[taskIndex - 1] = temp;
+    setTasks(newTasks);
   };
   
   // Move task down in order
@@ -328,22 +334,28 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
     // Create a copy of the tasks array
     const updatedTasks = [...tasks];
     
-    // Swap the task with the one below it
-    const temp = updatedTasks[taskIndex];
-    updatedTasks[taskIndex] = updatedTasks[taskIndex + 1];
-    updatedTasks[taskIndex + 1] = temp;
+    // Get the tasks we need to swap
+    const taskToMoveDown = updatedTasks[taskIndex];
+    const taskToMoveUp = updatedTasks[taskIndex + 1];
     
-    // Update order properties
-    const tasksWithNewOrder = updatedTasks.map((task, i) => ({
-      id: task.id,
-      order: i,
-      assignmentId: task.assignmentId // Include assignmentId which the backend may require
-    }));
+    // Simple swap of just the two tasks' orders
+    const simplifiedPayload = [
+      { id: taskToMoveDown.id, order: taskIndex + 1 },
+      { id: taskToMoveUp.id, order: taskIndex }
+    ];
     
-    console.log("Tasks being reordered with details:", updatedTasks);
+    console.log("Simplified reorder payload:", simplifiedPayload);
     
-    // Call the reorder API
-    reorderMutation.mutate(tasksWithNewOrder);
+    // Call the reorder API with just the two tasks that need to change
+    reorderMutation.mutate(simplifiedPayload);
+    
+    // Update local state to show immediate change without waiting for refetch
+    const newTasks = [...tasks];
+    // Swap the tasks
+    const temp = newTasks[taskIndex];
+    newTasks[taskIndex] = newTasks[taskIndex + 1];
+    newTasks[taskIndex + 1] = temp;
+    setTasks(newTasks);
   };
 
   // Calculate total time
