@@ -99,21 +99,13 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       const [hours, minutes] = startTime.split(':').map(Number);
       today.setHours(hours, minutes, 0, 0);
       
-      // Check if the start time is valid (not empty and has proper format)
-      const isValidStartTime = startTime && /^\d{2}:\d{2}$/.test(startTime);
-      
       // Generate a schedule with available minutes if provided
       const payload: any = {
         assignmentIds,
         startDate: today.toISOString(),
         prioritizeTodaysDue: true, // Flag to prioritize today's due tasks
-        showTimeOfDay: isValidStartTime // Only show specific times if valid start time provided
+        startTime: startTime // Include the start time for display purposes
       };
-      
-      // Only include start time if it's valid
-      if (isValidStartTime) {
-        payload.startTime = startTime;
-      }
       
       const totalMinutes = getTotalMinutes();
       if (totalMinutes !== undefined) {
