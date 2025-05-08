@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Pause, Play, RotateCcw } from 'lucide-react';
 import { TaskTimerState } from '@/hooks/useTimerSystem';
+import useSound from 'use-sound';
+import { timerCompleteSound } from '@/assets/sounds/timer-complete';
 
 interface TimerDisplayProps {
   task: {
@@ -45,6 +47,12 @@ export default function TimerDisplay({
   onPrevious,
   onNext
 }: TimerDisplayProps) {
+  // Initialize sound effect for timer completion
+  const [playTimerComplete] = useSound(timerCompleteSound);
+  
+  // Keep track of previous completion state to detect changes
+  const prevCompletedRef = useRef(timerState.isCompleted);
+  
   // Format time as mm:ss - Define this first before using it!
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -58,14 +66,22 @@ export default function TimerDisplay({
     100
   );
   
-  // Log timer state for debugging
-  console.log(`Timer display for task ${task.id}:`, {
-    timeElapsed: timerState.timeElapsed,
-    isActive: timerState.isActive,
-    formattedTime: formatTime(timerState.timeElapsed),
-    progressPercentage
-  });
-
+  // Check if timer has reached its target time (task allocation) and play sound
+  useEffect(() => {
+    // If progress has just reached 100% or timer just completed
+    if (progressPercentage >= 100 && !prevCompletedRef.current && !timerState.isCompleted) {
+      playTimerComplete();
+    }
+    
+    // Check if completed state changed
+    if (timerState.isCompleted !== prevCompletedRef.current && timerState.isCompleted) {
+      playTimerComplete();
+    }
+    
+    // Update ref for next check
+    prevCompletedRef.current = timerState.isCompleted;
+  }, [progressPercentage, timerState.isCompleted, playTimerComplete]);
+  
   // Format total duration in mm:ss format
   const formatDuration = (minutes: number): string => {
     return `${Math.floor(minutes / 60)}:${(minutes % 60).toString().padStart(2, '0')}`;
