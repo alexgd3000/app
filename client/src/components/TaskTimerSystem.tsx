@@ -179,12 +179,15 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
       
       {/* Remove the task navigation section since we moved it to TimerDisplay */}
       
-      {/* Task list */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-        <div className="p-4 bg-gray-100 border-b border-gray-200">
-          <h3 className="font-medium text-gray-700">Today's Schedule</h3>
+      {/* Task list - more compact version */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Today's Schedule</h3>
+          <Badge variant="outline" className="text-xs">
+            {sortedSchedule.filter(item => item.completed).length}/{sortedSchedule.length} Tasks
+          </Badge>
         </div>
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-gray-100">
           {sortedSchedule.map((item) => {
             const isCurrentTask = item.taskId === currentTask.taskId;
             const timerState = timerStates[item.taskId];
@@ -193,43 +196,51 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
             const startTime = new Date(item.startTime);
             const endTime = new Date(item.endTime);
             const timeString = `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            const durationMins = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             
             return (
               <div 
                 key={item.id} 
-                className={`p-3 flex items-center cursor-pointer hover:bg-gray-50 transition-colors ${isCurrentTask ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                className={`px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50 transition-colors ${
+                  isCurrentTask ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                }`}
                 onClick={() => switchToTask(item.taskId)}
               >
-                <div className="flex-1">
-                  <div className="flex items-center">
-                    {item.completed ? (
-                      <Badge variant="outline" className="mr-2 bg-green-50 text-green-700 border-green-200">Completed</Badge>
-                    ) : timerState?.isActive ? (
-                      <Badge variant="outline" className="mr-2 bg-blue-50 text-blue-700 border-blue-200 animate-pulse">Active</Badge>
-                    ) : (
-                      <Badge variant="outline" className="mr-2 bg-gray-50 text-gray-700 border-gray-200">Not Started</Badge>
-                    )}
-                    <span className="text-sm text-gray-500">{timeString}</span>
+                {/* Status indicator */}
+                <div className="mr-2 flex-shrink-0">
+                  {item.completed ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : timerState?.isActive ? (
+                    <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                  )}
+                </div>
+                
+                {/* Task info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.task?.description || "Unknown task"}
+                    </p>
                   </div>
-                  <div className="mt-1 font-medium">
-                    {item.task?.description || "Unknown task"}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {item.assignment?.title || "Unknown assignment"}
+                  <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                    <span className="truncate">{item.assignment?.title || "Unknown assignment"}</span>
+                    <span className="mx-1">•</span>
+                    <span>{timeString}</span>
                   </div>
                 </div>
-                <div className="ml-4 text-right">
-                  <div className="text-sm font-medium">
-                    {timerState ? (
-                      <span className={timerState.timeElapsed > 0 ? 'text-blue-600' : 'text-gray-500'}>
-                        {Math.floor(timerState.timeElapsed / 60)}:{(timerState.timeElapsed % 60).toString().padStart(2, '0')}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">0:00</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    of {Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))} mins
+                
+                {/* Timer */}
+                <div className="ml-2 flex-shrink-0 text-right">
+                  <div className="flex items-center">
+                    <span className={`text-sm font-medium ${timerState?.timeElapsed > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {timerState ? 
+                        `${Math.floor(timerState.timeElapsed / 60)}:${(timerState.timeElapsed % 60).toString().padStart(2, '0')}` :
+                        '0:00'
+                      }
+                    </span>
+                    <span className="text-xs text-gray-400 ml-1">/{durationMins}m</span>
                   </div>
                 </div>
               </div>

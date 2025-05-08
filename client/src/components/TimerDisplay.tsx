@@ -74,116 +74,119 @@ export default function TimerDisplay({
   };
 
   return (
-    <Card className="p-4 border-2 border-primary/10 shadow-sm">
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium flex items-center">
-              {timerState.isCompleted && (
-                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+    <Card className="p-3 border border-primary/10 shadow-sm">
+      <div className="space-y-3">
+        {/* Header with task info and progress */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-grow">
+            <div className="flex items-center gap-1">
+              {timerState.isCompleted && <CheckCircle className="h-4 w-4 text-green-500" />}
+              <h3 className="text-sm font-medium line-clamp-1">
+                {assignment.title}: {task.description}
+              </h3>
+              <Badge variant="outline" className="ml-1 text-[10px] px-2 py-0 h-5">
+                {taskProgress ? `${taskProgress.current}/${taskProgress.total}` : "0/0"}
+              </Badge>
+            </div>
+            
+            {/* Timer with allocated time */}
+            <div className="flex items-center mt-1">
+              <span className="text-lg font-medium text-gray-700 mr-2">
+                {formatTime(timerState.timeElapsed)}
+              </span>
+              <Badge variant="outline" className="text-xs">
+                {formatDuration(task.timeAllocation)}
+              </Badge>
+              
+              {/* Status badge */}
+              {timerState.isCompleted ? (
+                <Badge variant="outline" className="ml-auto text-xs bg-green-50 text-green-700 border-green-200">
+                  Completed
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  {timerState.isActive ? "Active" : "Paused"}
+                </Badge>
               )}
-              <span>Current Task</span>
-            </h3>
-            <Badge variant="outline" className="px-3 py-1">
-              {taskProgress ? 
-                `${taskProgress.current} of ${taskProgress.total}` : 
-                "0 of 0"
-              }
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {assignment.title}: {task.description}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm">
-            <div className="text-lg font-medium text-gray-700">
-              {formatTime(timerState.timeElapsed)}
-            </div>
-            <div>
-              <Badge variant="outline">{formatDuration(task.timeAllocation)}</Badge>
             </div>
           </div>
-
-          <Progress value={progressPercentage} className="h-2" />
-
-          {/* Removed redundant time labels */}
-        </div>
-
-        {/* Task controls with play/pause button in center */}
-        <div className="flex justify-center space-x-3 items-center">
-          {/* Previous task button */}
-          <Button
-            variant="outline"
-            className="justify-start"
-            onClick={onPrevious}
-            disabled={!onPrevious}
-          >
-            <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Previous Task
-          </Button>
           
           {/* Play/Pause button */}
           <Button
-            size="icon"
+            size="sm"
             variant={timerState.isActive ? "outline" : "default"}
-            className="rounded-full h-11 w-11"
+            className="rounded-full h-9 w-9 flex-shrink-0"
             onClick={timerState.isActive ? onPause : onPlay}
             disabled={timerState.isCompleted}
           >
             {timerState.isActive ? (
-              <Pause className="h-5 w-5" />
+              <Pause className="h-4 w-4" />
             ) : (
-              <Play className="h-5 w-5 ml-0.5" />
+              <Play className="h-4 w-4 ml-0.5" />
             )}
           </Button>
-          
-          {/* Next task or complete button */}
-          <Button
-            variant="outline"
-            className="justify-end"
-            onClick={timerState.isCompleted ? onNext : onComplete}
-            disabled={!onNext && timerState.isCompleted}
-          >
-            Next Task
-            <svg className="h-4 w-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </Button>
         </div>
-
-        {/* Bottom controls */}
-        <div className="flex justify-between items-center">
-          <Button
-            size="sm"
-            variant={timerState.timeElapsed > 0 ? "secondary" : "ghost"}
-            className={`${timerState.timeElapsed > 0 ? 'text-xs bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700' : 'text-xs'}`}
-            onClick={onReset}
-            disabled={timerState.timeElapsed === 0 || timerState.isCompleted}
-          >
-            <RotateCcw className="h-3 w-3 mr-1" />
-            Reset Timer
-          </Button>
-
-          {timerState.isCompleted ? (
+        
+        {/* Progress bar */}
+        <Progress value={progressPercentage} className="h-1.5" />
+        
+        {/* Navigation and controls in a more compact layout */}
+        <div className="flex gap-2 items-center justify-between">
+          {/* Previous/Next buttons row */}
+          <div className="flex gap-1 flex-grow">
             <Button
               size="sm"
               variant="outline"
-              className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
-              onClick={onUndo}
+              className="h-8 px-2 text-xs"
+              onClick={onPrevious}
+              disabled={!onPrevious}
             >
-              Undo Complete
+              <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              Previous
             </Button>
-          ) : (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              In Progress
-            </Badge>
-          )}
+            
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2 text-xs"
+              onClick={timerState.isCompleted ? onNext : onComplete}
+              disabled={!onNext && timerState.isCompleted}
+            >
+              Next
+              <svg className="h-3 w-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </Button>
+          </div>
+          
+          {/* Utility buttons */}
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={onReset}
+              disabled={timerState.timeElapsed === 0 || timerState.isCompleted}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset
+            </Button>
+            
+            {timerState.isCompleted && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={onUndo}
+              >
+                Undo
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </Card>
