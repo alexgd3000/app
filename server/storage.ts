@@ -466,15 +466,15 @@ export class MemStorage implements IStorage {
     let currentTimePointer = new Date(scheduleStartDate);
     
     // Calculate end time based on available minutes
-    // Add a hidden 15-minute buffer to available time (to allow tasks that exactly fit)
-    const BUFFER_MINUTES = 15;
+    // No buffer needed - we want exact time calculations
+    const BUFFER_MINUTES = 0; // Removed buffer
     let endTime = new Date(currentTimePointer);
     
     // Default to 480 minutes (8 hours) if no available minutes are specified
-    let actualAvailableMinutes = availableMinutes ? availableMinutes + BUFFER_MINUTES : 480;
+    let actualAvailableMinutes = availableMinutes ? availableMinutes : 480;
     
     if (availableMinutes) {
-      // Add buffer to the available minutes (but we'll check against the original value later)
+      // Set exact end time based on available minutes
       endTime.setMinutes(endTime.getMinutes() + actualAvailableMinutes);
     } else {
       // Default end time at 6 PM if no available minutes specified
@@ -662,15 +662,17 @@ export class MemStorage implements IStorage {
       // Move time pointer forward
       currentTimePointer = new Date(taskEndTime);
       
-      // Add a 15-minute break after every 2 tasks
+      // Add a 15-minute break after every 2 tasks, but only if there's room for it
       if (result.length % 3 === 0) {
-        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
-        
-        // If break pushes past available time, stop scheduling
+        // Check if adding a break would exceed available time
         if (availableMinutes && scheduledTime + 15 > actualAvailableMinutes) {
           exceededAvailableTime = true;
           break;
         }
+        
+        // Add the break to our time tracking
+        scheduledTime += 15;
+        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
       }
     }
     
