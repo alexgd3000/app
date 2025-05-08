@@ -165,18 +165,15 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
             const isCurrentTask = item.taskId === currentTask.taskId;
             const timerState = timerStates[item.taskId];
             
-            // Format the time, but only if specific times should be shown
+            // Format the time, but only if a valid specific time was provided
             const startTime = new Date(item.startTime);
             const endTime = new Date(item.endTime);
-            
-            // Check if this specific schedule item should show times
-            const shouldShowTime = item.showTimeOfDay === true;
-            
-            // Only show time string if times should be shown
-            const timeString = shouldShowTime 
+            // Check if the schedule has specific times (startTime property will be present on the first item)
+            const hasSpecificTimes = sortedSchedule.length > 0 && sortedSchedule[0].hasOwnProperty('showTimeOfDay') && sortedSchedule[0].showTimeOfDay;
+            // Only show time string if specific times were provided
+            const timeString = hasSpecificTimes 
               ? `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
               : '';
-              
             const durationMins = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             
             return (
