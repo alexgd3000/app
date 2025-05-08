@@ -34,6 +34,7 @@ export default function TimerDisplay({
   assignment,
   timerState,
   isActive,
+  taskProgress,
   onPlay,
   onPause,
   onReset,
@@ -84,8 +85,10 @@ export default function TimerDisplay({
               <span>Current Task</span>
             </h3>
             <Badge variant="outline" className="px-3 py-1">
-              {/* This will be replaced with the task number from TaskTimerSystem */}
-              <span className="task-number-placeholder">0 of 0</span>
+              {taskProgress ? 
+                `${taskProgress.current} of ${taskProgress.total}` : 
+                "0 of 0"
+              }
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">

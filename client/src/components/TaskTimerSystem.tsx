@@ -164,6 +164,10 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
         }}
         timerState={timerStates[currentTask.taskId]}
         isActive={activeTaskId === currentTask.taskId}
+        taskProgress={{ 
+          current: currentTaskIndex + 1, 
+          total: sortedSchedule.length 
+        }}
         onPlay={() => startTimer(currentTask.taskId)}
         onPause={() => pauseTimer(currentTask.taskId)}
         onReset={() => resetTimer(currentTask.taskId)}
