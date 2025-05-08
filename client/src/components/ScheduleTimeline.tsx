@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@shared/schema";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import TaskTimer from "./TaskTimer";
+import TaskTimerSystem from "./TaskTimerSystem";
 
 interface ScheduleTimelineProps {
   isLoading: boolean;
@@ -27,7 +27,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const [todaysDueTasksTime, setTodaysDueTasksTime] = useState<number>(0);
   const [unscheduledTaskDetails, setUnscheduledTaskDetails] = useState<{ id: number; description: string; assignmentTitle: string; timeAllocation: number }[]>([]);
   const [showWarning, setShowWarning] = useState<boolean>(false);
-  const [currentTask, setCurrentTask] = useState<any | null>(null);
   
   // Calculate total minutes from hours and minutes inputs
   const getTotalMinutes = (): number | undefined => {
@@ -201,112 +200,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  // Move to the previous task in the schedule and mark it as not complete
-  const moveToPreviousTask = async () => {
-    if (!currentTask || scheduleData.length === 0) return;
-    
-    // Get all schedule items sorted by start time
-    const sortedItems = [...scheduleData].sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
-    
-    // Find the index of the current task
-    const currentIndex = sortedItems.findIndex(item => item.id === currentTask.id);
-    
-    // If there is a previous task, go to it and mark it as not complete
-    if (currentIndex > 0) {
-      const previousTask = sortedItems[currentIndex - 1];
-      
-      // Mark the previous task as not complete if it was completed
-      if (previousTask.completed) {
-        try {
-          // Update schedule item
-          await apiRequest(
-            "PUT", 
-            `/api/schedule/${previousTask.id}`, 
-            { completed: false }
-          );
-          
-          // Update task
-          await apiRequest(
-            "PUT", 
-            `/api/tasks/${previousTask.taskId}`, 
-            { completed: false }
-          );
-          
-          // Refresh queries
-          queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
-          
-          // This will be set after the queries are invalidated and data is refetched
-          setTimeout(() => {
-            const updatedScheduleData = scheduleData.map(item => 
-              item.id === previousTask.id ? { ...item, completed: false } : item
-            );
-            setCurrentTask({ ...previousTask, completed: false });
-          }, 100);
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Failed to update task status",
-            variant: "destructive"
-          });
-        }
-      } else {
-        // If the task wasn't completed, just navigate to it
-        setCurrentTask(previousTask);
-      }
-    }
-  };
-  
-  // Move to the next task in the schedule
-  const moveToNextTask = () => {
-    if (!currentTask || scheduleData.length === 0) return;
-    
-    // Get all schedule items sorted by start time
-    const sortedItems = [...scheduleData].sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
-    
-    // Find the index of the current task
-    const currentIndex = sortedItems.findIndex(item => item.id === currentTask.id);
-    
-    // If there is a next task, set it as current
-    if (currentIndex < sortedItems.length - 1) {
-      const nextTask = sortedItems[currentIndex + 1];
-      setCurrentTask(nextTask);
-    }
-  };
-
-  // Find the current task in progress
-  useEffect(() => {
-    if (!isLoading && scheduleData && scheduleData.length > 0) {
-      const now = new Date();
-      // Find the first task that's in progress
-      const inProgressTask = scheduleData.find(item => {
-        const start = new Date(item.startTime);
-        const end = new Date(item.endTime);
-        return !item.completed && start <= now && end >= now;
-      });
-      
-      if (inProgressTask) {
-        setCurrentTask(inProgressTask);
-      } else {
-        // If no task in progress, find the next upcoming task
-        const nextTask = scheduleData
-          .filter(item => !item.completed)
-          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
-        
-        if (nextTask) {
-          setCurrentTask(nextTask);
-        } else {
-          setCurrentTask(null);
-        }
-      }
-    } else {
-      setCurrentTask(null);
-    }
-  }, [isLoading, scheduleData]);
+  // No longer need task navigation functions, as these are handled by the TaskTimerSystem
   
   return (
     <Card className="mt-6">
@@ -418,26 +312,11 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       
       <CardContent className="px-6 py-5">
         {/* Task Timer Section - Only show when we have a current task */}
-        {currentTask && scheduleData.length > 0 && (
+        {scheduleData.length > 0 && (
           <div className="mb-6">
-            <TaskTimer
-              scheduleItemId={currentTask.id}
-              taskId={currentTask.taskId}
-              taskDescription={currentTask.task ? currentTask.task.description : "Unknown task"}
-              assignmentTitle={currentTask.assignment ? currentTask.assignment.title : "Unknown assignment"}
-              startTime={currentTask.startTime}
-              endTime={currentTask.endTime}
-              duration={Math.round((new Date(currentTask.endTime).getTime() - new Date(currentTask.startTime).getTime()) / (1000 * 60))}
-              isCompleted={currentTask.completed}
-              onComplete={() => {
-                // Force refresh the schedule and assignments
-                queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-                queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
-                
-                onRefresh();
-              }}
-              onPrevious={moveToPreviousTask}
-              onNext={moveToNextTask}
+            <TaskTimerSystem
+              scheduleData={scheduleData}
+              onRefresh={onRefresh}
             />
             
             {/* Task details section */}
@@ -451,9 +330,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 </div>
                 
                 <div className="flex items-center">
-                  <span className="text-xs text-gray-500 mr-2">
-                    Task {scheduleData.findIndex(item => item.id === currentTask.id) + 1} of {scheduleData.length}
-                  </span>
                   <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
                     <path d="M8 12L11 15L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -531,7 +407,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               {scheduleData.map((item) => {
                 const inProgress = isItemInProgress(item);
                 const completed = item.completed;
-                const isCurrentTask = currentTask && currentTask.id === item.id;
                 
                 // Determine the status label
                 let statusLabel = "Not started";
@@ -540,7 +415,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 if (completed) {
                   statusLabel = "Completed";
                   statusClass = "bg-green-50 text-green-700 border-green-100";
-                } else if (inProgress || isCurrentTask) {
+                } else if (inProgress) {
                   statusLabel = "In progress";
                   statusClass = "bg-blue-50 text-blue-700 border-blue-100";
                 }
@@ -548,15 +423,15 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 return (
                   <li 
                     key={item.id} 
-                    className={`relative pl-10 ${isCurrentTask ? 'bg-primary/5 -mx-6 px-6 py-3 rounded-md shadow-sm border-l-4 border-primary' : ''}`}
+                    className="relative pl-10"
                   >
                     <div className="flex items-center">
                       <div 
-                        className={`absolute left-0 p-1 rounded-full border-4 border-white ${(inProgress || isCurrentTask) ? 'bg-gray-100' : 'bg-white'}`}
+                        className={`absolute left-0 p-1 rounded-full border-4 border-white ${inProgress ? 'bg-gray-100' : 'bg-white'}`}
                       >
                         <div 
                           className={`w-2 h-2 rounded-full ${
-                            completed ? 'bg-green-500' : (inProgress || isCurrentTask) ? 'bg-blue-500' : 'bg-gray-400'
+                            completed ? 'bg-green-500' : inProgress ? 'bg-blue-500' : 'bg-gray-400'
                           }`}
                         ></div>
                       </div>
@@ -565,15 +440,10 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                           <span className={`${statusClass} text-xs px-2 py-1 rounded border mr-2 min-w-[90px] text-center`}>
                             {statusLabel}
                           </span>
-                          <h3 className={`text-sm ${isCurrentTask ? 'font-bold' : 'font-medium'} text-gray-900 flex-1`}>
+                          <h3 className="text-sm font-medium text-gray-900 flex-1">
                             {item.task && item.assignment
                               ? `${item.assignment.title}: ${item.task.description}`
                               : "Unknown task"}
-                            {isCurrentTask && (
-                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary text-white">
-                                Current
-                              </span>
-                            )}
                           </h3>
                           
                           {!completed && (
@@ -593,18 +463,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                       </div>
                     </div>
                     
-                    {isCurrentTask && (
-                      <div className="mt-2 ml-[106px]">
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-xs h-6 px-1 text-primary"
-                          onClick={() => setCurrentTask(item)}
-                        >
-                          Focus on this task
-                        </Button>
-                      </div>
-                    )}
+                    {/* No focus button needed with new timer system */}
                   </li>
                 );
               })}
