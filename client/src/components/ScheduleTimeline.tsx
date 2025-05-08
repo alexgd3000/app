@@ -30,12 +30,18 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
   const [showWarning, setShowWarning] = useState<boolean>(false);
   
   // Reset all timers mutation
+  const [resetAllTimersFunction, setResetAllTimersFunction] = useState<(() => Promise<void>) | null>(null);
+  
   const resetAllTimersMutation = useMutation({
     mutationFn: async () => {
-      // For this implementation, we just need to clear the local storage
-      localStorage.removeItem('timerStates');
-      // Return true to indicate success
-      return true;
+      if (resetAllTimersFunction) {
+        await resetAllTimersFunction();
+        return true;
+      } else {
+        // Fallback to just clearing localStorage if we don't have the function
+        localStorage.removeItem('timerStates');
+        return true;
+      }
     },
     onSuccess: () => {
       toast({

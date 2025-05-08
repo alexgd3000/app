@@ -12,9 +12,10 @@ import { ArrowLeft, ArrowRight, ListChecks, CheckCircle } from 'lucide-react';
 interface TaskTimerSystemProps {
   scheduleData: any[];
   onRefresh: () => void;
+  onResetAllTimers?: (resetFn: () => Promise<void>) => void;
 }
 
-export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSystemProps) {
+export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTimers }: TaskTimerSystemProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -96,6 +97,13 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
       switchToTask(sortedSchedule[0].taskId);
     }
   }, [sortedSchedule.length]);
+  
+  // Pass the resetAllTimers function to the parent component
+  useEffect(() => {
+    if (onResetAllTimers && resetAllTimers) {
+      onResetAllTimers(resetAllTimers);
+    }
+  }, [onResetAllTimers, resetAllTimers]);
   
   // If no schedule data or active task, show empty state
   if (!currentTask || scheduleData.length === 0) {
