@@ -20,6 +20,7 @@ interface TimerDisplayProps {
   timerState: TaskTimerState;
   isActive: boolean;
   taskProgress?: { current: number; total: number }; // Add the task progress interface
+  completedTasksCount: number;
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -35,6 +36,7 @@ export default function TimerDisplay({
   timerState,
   isActive,
   taskProgress,
+  completedTasksCount,
   onPlay,
   onPause,
   onReset,
@@ -95,7 +97,7 @@ export default function TimerDisplay({
           
           <div className="flex-shrink-0 flex items-center gap-1">
             <Badge variant="outline" className="text-[10px] px-2 py-0 h-5">
-              {taskProgress ? `${taskProgress.current}/${taskProgress.total}` : "0/0"}
+              {taskProgress ? `${completedTasksCount}/${taskProgress.total}` : "0/0"}
             </Badge>
             
             <Badge variant="outline" className="text-[10px] px-2 py-0 h-5">

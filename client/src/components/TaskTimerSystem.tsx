@@ -131,6 +131,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
           current: currentTaskIndex + 1, 
           total: sortedSchedule.length 
         }}
+        completedTasksCount={sortedSchedule.filter(item => item.completed).length}
         onPlay={() => startTimer(currentTask.taskId)}
         onPause={() => pauseTimer(currentTask.taskId)}
         onReset={() => resetTimer(currentTask.taskId)}
