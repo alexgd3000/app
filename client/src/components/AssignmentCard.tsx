@@ -99,7 +99,13 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
       
       if (activeScheduleItem && activeScheduleItem.task) {
         setActiveTaskId(activeScheduleItem.task.id);
+      } else {
+        // Clear the active task ID if there's no active schedule item
+        setActiveTaskId(null);
       }
+    } else {
+      // Clear the active task ID if there's no schedule data or the assignment isn't active
+      setActiveTaskId(null);
     }
   }, [isActive, scheduleData, assignment.id]);
   

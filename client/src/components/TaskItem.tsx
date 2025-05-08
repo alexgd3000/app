@@ -93,8 +93,8 @@ export default function TaskItem({
           <span className="text-xs font-medium text-gray-500">{formatTime(task.timeAllocation)}</span>
         </div>
         
-        {/* Show progress bar for active task */}
-        {isActive && !task.completed && (
+        {/* Show progress bar for active task only if there's actually time spent */}
+        {isActive && !task.completed && task.timeSpent > 0 && (
           <div className="mt-1 flex items-center">
             <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
               <div 

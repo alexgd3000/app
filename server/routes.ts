@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Ensure all tasks have id and order properties
-        const validTasks = tasksToReorder.map((task, index) => {
+        const validTasks = tasksToReorder.map((task: { id: string | number, order?: number }, index: number) => {
           const taskId = parseInt(task.id, 10);
           if (isNaN(taskId)) {
             throw new Error(`Task at index ${index} has invalid ID: ${task.id}`);
