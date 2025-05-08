@@ -173,34 +173,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
         onNext={hasNextTask ? handleNextTask : undefined}
       />
       
-      {/* Task navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <Button
-          variant="outline"
-          className="justify-start"
-          onClick={handlePreviousTask}
-          disabled={!hasPreviousTask}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous Task
-        </Button>
-        
-        <div className="flex justify-center items-center">
-          <Badge variant="outline" className="px-3 py-1">
-            {currentTaskIndex + 1} of {sortedSchedule.length}
-          </Badge>
-        </div>
-        
-        <Button
-          variant="outline"
-          className="justify-end"
-          onClick={handleNextTask}
-          disabled={!hasNextTask}
-        >
-          Next Task
-          <ArrowRight className="h-4 w-4 ml-2" />
-        </Button>
-      </div>
+      {/* Remove the task navigation section since we moved it to TimerDisplay */}
       
       {/* Task list */}
       <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
