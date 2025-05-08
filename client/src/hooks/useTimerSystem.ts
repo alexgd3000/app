@@ -103,20 +103,28 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       saveTimerStates();
       
       // Also save the active timer's progress to the server
-      if (activeTaskId && timerStates[activeTaskId] && timerStates[activeTaskId].isActive) {
-        const state = timerStates[activeTaskId];
-        const minutesSpent = Math.round(state.timeElapsed / 60);
-        
-        apiRequest(
-          "PUT",
-          `/api/tasks/${activeTaskId}`,
-          { 
-            timeSpent: minutesSpent.toString()
-          }
-        ).catch(error => {
-          console.error("Failed to auto-save timer progress:", error);
-        });
-      }
+      // Use setTimerStates to get the most current states and activeTaskId
+      setTimerStates(currentTimerStates => {
+        const currentActiveTaskId = activeTaskId;
+        if (currentActiveTaskId && 
+            currentTimerStates[currentActiveTaskId] && 
+            currentTimerStates[currentActiveTaskId].isActive) {
+          
+          const state = currentTimerStates[currentActiveTaskId];
+          const minutesSpent = Math.round(state.timeElapsed / 60);
+          
+          apiRequest(
+            "PUT",
+            `/api/tasks/${currentActiveTaskId}`,
+            { 
+              timeSpent: minutesSpent.toString()
+            }
+          ).catch(error => {
+            console.error("Failed to auto-save timer progress:", error);
+          });
+        }
+        return currentTimerStates; // Return unchanged state
+      });
     }, 30000);
     
     setSaveIntervalId(intervalId);
@@ -128,7 +136,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       }
       saveTimerStates();
     };
-  }, [scheduleData]);
+  }, [scheduleData, timerStates, activeTaskId, saveIntervalId]);
   
   // Save timer states to localStorage
   const saveTimerStates = () => {
@@ -342,15 +350,20 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   
   // Increment active timer by 1 second - to be called from an interval
   const incrementActiveTimer = () => {
-    if (!activeTaskId || !timerStates[activeTaskId] || !timerStates[activeTaskId].isActive) return;
-    
-    setTimerStates(prev => ({
-      ...prev,
-      [activeTaskId]: {
-        ...prev[activeTaskId],
-        timeElapsed: prev[activeTaskId].timeElapsed + 1
+    setTimerStates(prev => {
+      const currentActiveTaskId = activeTaskId;
+      if (!currentActiveTaskId || !prev[currentActiveTaskId] || !prev[currentActiveTaskId].isActive) {
+        return prev; // No changes if no active task
       }
-    }));
+      
+      return {
+        ...prev,
+        [currentActiveTaskId]: {
+          ...prev[currentActiveTaskId],
+          timeElapsed: prev[currentActiveTaskId].timeElapsed + 1
+        }
+      };
+    });
   };
   
   // Set up the increment interval for the active timer
