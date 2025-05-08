@@ -112,6 +112,12 @@ export default function Planner() {
               >
                 All Assignments
               </TabsTrigger>
+              <TabsTrigger
+                value="completed"
+                className="py-4 px-1 data-[state=active]:border-primary-500 data-[state=active]:text-primary-600 data-[state=active]:border-b-2 border-transparent rounded-none focus:ring-0"
+              >
+                Completed
+              </TabsTrigger>
             </TabsList>
           </div>
           
