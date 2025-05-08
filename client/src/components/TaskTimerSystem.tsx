@@ -13,9 +13,17 @@ interface TaskTimerSystemProps {
   scheduleData: any[];
   onRefresh: () => void;
   onResetAllTimers?: (resetFn: () => Promise<void>) => void;
+  unscheduledTaskDetails?: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[];
+  availableMinutes?: number;
 }
 
-export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTimers }: TaskTimerSystemProps) {
+export default function TaskTimerSystem({ 
+  scheduleData, 
+  onRefresh, 
+  onResetAllTimers,
+  unscheduledTaskDetails = [],
+  availableMinutes
+}: TaskTimerSystemProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -171,6 +179,37 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
             const timeString = `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
             const durationMins = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             
+            // Calculate the accumulated time up to this task
+            const taskIndex = sortedSchedule.findIndex(t => t.id === item.id);
+            const timeBeforeThis = sortedSchedule
+              .slice(0, taskIndex + 1)
+              .reduce((total, t) => {
+                const tDuration = Math.round((new Date(t.endTime).getTime() - new Date(t.startTime).getTime()) / (1000 * 60));
+                return total + tDuration;
+              }, 0);
+            
+            // Check if this task exceeds available time
+            const exceedsAvailableTime = availableMinutes !== undefined && timeBeforeThis > availableMinutes;
+            
+            // Determine if this task is unscheduled in the warnings
+            const isTaskInWarnings = unscheduledTaskDetails.some(
+              ut => ut.id === item.task?.id && ut.description === item.task?.description
+            );
+            
+            // Set appropriate colors
+            let taskTextColor = "text-gray-900";
+            let timeTextColor = "text-gray-500";
+            
+            if (isTaskInWarnings) {
+              // Task is explicitly listed in unscheduled warnings - use red
+              taskTextColor = "text-red-600 font-semibold";
+              timeTextColor = "text-red-500";
+            } else if (exceedsAvailableTime) {
+              // Task exceeds available time but isn't critical - use amber
+              taskTextColor = "text-amber-600 font-semibold";
+              timeTextColor = "text-amber-500";
+            }
+            
             return (
               <div 
                 key={item.id} 
@@ -206,14 +245,19 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
                 {/* Task info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className={`text-sm font-medium truncate ${taskTextColor}`}>
                       {item.task?.description || "Unknown task"}
+                      {(isTaskInWarnings || exceedsAvailableTime) && (
+                        <span className="ml-1 text-xs">
+                          {isTaskInWarnings ? "(won't fit)" : "(might not fit)"}
+                        </span>
+                      )}
                     </p>
                   </div>
-                  <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                    <span className="truncate">{item.assignment?.title || "Unknown assignment"}</span>
-                    <span className="mx-1">•</span>
-                    <span>{timeString}</span>
+                  <div className="flex items-center text-xs mt-0.5">
+                    <span className={`truncate ${timeTextColor}`}>{item.assignment?.title || "Unknown assignment"}</span>
+                    <span className={`mx-1 ${timeTextColor}`}>•</span>
+                    <span className={timeTextColor}>{timeString}</span>
                   </div>
                 </div>
                 
@@ -226,7 +270,9 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
                         '0:00'
                       }
                     </span>
-                    <span className="text-xs text-gray-400 ml-1">/{Math.floor(durationMins / 60)}:{(durationMins % 60).toString().padStart(2, '0')}</span>
+                    <span className={`text-xs ml-1 ${exceedsAvailableTime || isTaskInWarnings ? 'text-amber-500' : 'text-gray-400'}`}>
+                      /{Math.floor(durationMins / 60)}:{(durationMins % 60).toString().padStart(2, '0')}
+                    </span>
                   </div>
                 </div>
               </div>

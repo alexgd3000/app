@@ -445,6 +445,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               scheduleData={scheduleData}
               onRefresh={onRefresh}
               onResetAllTimers={(resetFn) => setResetAllTimersFunction(() => resetFn)}
+              unscheduledTaskDetails={unscheduledTaskDetails}
+              availableMinutes={getTotalMinutes()}
             />
           </div>
         )}
