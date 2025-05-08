@@ -228,23 +228,14 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   };
   
   // Mark a task as complete - only updates completion status, doesn't navigate
-  // NO AUTOMATIC SYNCHRONIZATION - only updates UI state locally
   const completeTask = async (taskId: number, scheduleItemId: number) => {
     if (!timerStates[taskId]) return;
     
-    console.log(`Marking task ${taskId} as complete (scheduleItem: ${scheduleItemId}) - LOCAL ONLY`);
-    
-    // Pause the timer first if it's active
-    setTimerStates(prev => ({
-      ...prev,
-      [taskId]: {
-        ...prev[taskId],
-        isActive: false
-      }
-    }));
+    // Pause the timer first
+    pauseTimer(taskId);
     
     try {
-      // Update local state immediately for UI feedback ONLY - no API calls
+      // Update local state immediately for UI feedback
       setTimerStates(prev => ({
         ...prev,
         [taskId]: {
@@ -254,16 +245,28 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Save timer states to localStorage for persistence
-      saveTimerStates();
+      // Update the schedule item
+      await apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
+        { completed: true }
+      );
       
-      // Calculate minutes spent - but don't send to server automatically
+      // Update the task
       const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
-      console.log(`Task ${taskId} completed with ${minutesSpent} minutes spent - waiting for manual refresh`);
+      await apiRequest(
+        "PUT",
+        `/api/tasks/${taskId}`,
+        { 
+          completed: true,
+          timeSpent: minutesSpent.toString()
+        }
+      );
       
-      // NO AUTOMATIC API CALLS - user must click "Update Assignments" button
+      // Notify parent to refresh UI
+      onTimerComplete(taskId);
     } catch (error) {
-      console.error("Failed to update local task completion state:", error);
+      console.error("Failed to complete task:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({
@@ -273,21 +276,18 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
           isCompleted: false
         }
       }));
-      
-      // Save reverted state
-      saveTimerStates();
     }
+    
+    // Save updated states
+    saveTimerStates();
   };
   
   // Undo task completion - toggle a task back to incomplete state
-  // NO AUTOMATIC SYNCHRONIZATION - only updates UI state locally
   const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
     if (!timerStates[taskId]) return;
     
-    console.log(`Marking task ${taskId} as incomplete (scheduleItem: ${scheduleItemId}) - LOCAL ONLY`);
-    
     try {
-      // Update local state for immediate UI feedback ONLY - no API calls
+      // Update local state first for immediate UI feedback
       setTimerStates(prev => ({
         ...prev,
         [taskId]: {
@@ -296,21 +296,30 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Save timer states to localStorage for persistence
-      saveTimerStates();
+      // Update the schedule item
+      await apiRequest(
+        "PUT", 
+        `/api/schedule/${scheduleItemId}`, 
+        { completed: false }
+      );
       
-      // Only set as active if requested
+      // Update the task
+      await apiRequest(
+        "PUT",
+        `/api/tasks/${taskId}`,
+        { completed: false }
+      );
+      
+      // Only set as active if requested - this does NOT navigate, 
+      // it only updates the active task for UI focus
       if (makeActive) {
         setActiveTaskId(taskId);
       }
       
-      // Calculate minutes spent - but don't send to server automatically
-      const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
-      console.log(`Task ${taskId} marked incomplete with ${minutesSpent} minutes spent - waiting for manual refresh`);
-      
-      // NO AUTOMATIC API CALLS - user must click "Update Assignments" button
+      // Always notify parent to refresh UI
+      onTimerComplete(taskId);
     } catch (error) {
-      console.error("Failed to update local task completion state:", error);
+      console.error("Failed to undo task completion:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({
@@ -320,10 +329,10 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
           isCompleted: true // Revert back to completed
         }
       }));
-      
-      // Save reverted state
-      saveTimerStates();
     }
+    
+    // Save updated states
+    saveTimerStates();
   };
   
   // Update a timer's elapsed time

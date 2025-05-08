@@ -16,27 +16,15 @@ export default function Planner() {
   const [sortBy, setSortBy] = useState<string>("dueDate");
 
   const { 
-    data: incompleteAssignments = [], 
-    isLoading: incompleteAssignmentsLoading,
-    refetch: refetchIncompleteAssignments
+    data: assignments = [], 
+    isLoading: assignmentsLoading,
+    refetch: refetchAssignments
   } = useQuery<Assignment[]>({
     queryKey: ['/api/assignments/incomplete'],
   });
-  
-  // Query to fetch all assignments to filter for completed ones
-  const { 
-    data: allAssignments = [], 
-    isLoading: allAssignmentsLoading,
-    refetch: refetchAllAssignments
-  } = useQuery<Assignment[]>({
-    queryKey: ['/api/assignments'],
-  });
-  
-  // Filter out completed assignments
-  const completedAssignments = allAssignments.filter(a => a.completed);
 
   // Sort assignments based on the selected criteria
-  const sortedIncompleteAssignments = [...incompleteAssignments].sort((a, b) => {
+  const sortedAssignments = [...assignments].sort((a, b) => {
     switch (sortBy) {
       case "dueDate":
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -51,8 +39,7 @@ export default function Planner() {
   });
 
   const refreshData = () => {
-    refetchIncompleteAssignments();
-    refetchAllAssignments();
+    refetchAssignments();
   };
 
   return (
@@ -120,17 +107,17 @@ export default function Planner() {
                 Current Assignments
               </TabsTrigger>
               <TabsTrigger
-                value="completed"
+                value="all"
                 className="py-4 px-1 data-[state=active]:border-primary-500 data-[state=active]:text-primary-600 data-[state=active]:border-b-2 border-transparent rounded-none focus:ring-0"
               >
-                Completed Assignments
+                All Assignments
               </TabsTrigger>
             </TabsList>
           </div>
           
           <TabsContent value="current" className="mt-6">
             {/* Assignment / Tasks Dashboard */}
-            {incompleteAssignmentsLoading || allAssignmentsLoading ? (
+            {assignmentsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col p-6 space-y-4">
@@ -143,7 +130,7 @@ export default function Planner() {
                   </div>
                 ))}
               </div>
-            ) : sortedIncompleteAssignments.length === 0 ? (
+            ) : sortedAssignments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
                   <i className="ri-task-line text-5xl"></i>
@@ -157,7 +144,7 @@ export default function Planner() {
               </div>
             ) : (
               <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''} gap-6`}>
-                {sortedIncompleteAssignments.map((assignment: Assignment) => (
+                {sortedAssignments.map((assignment) => (
                   <AssignmentCard
                     key={assignment.id}
                     assignment={assignment}
@@ -170,85 +157,16 @@ export default function Planner() {
             )}
           </TabsContent>
           
-          <TabsContent value="completed" className="mt-6">
-            {/* Completed Assignments Dashboard */}
-            {allAssignmentsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2].map((i) => (
-                  <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col p-6 space-y-4">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-20 w-full" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : completedAssignments.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <i className="ri-checkbox-circle-line text-5xl"></i>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900">No completed assignments</h3>
-                <p className="mt-1 text-sm text-gray-500">Completed assignments will appear here</p>
-              </div>
-            ) : (
-              <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''} gap-6`}>
-                {completedAssignments.map((assignment: Assignment) => (
-                  <div key={assignment.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-gray-100">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h2 className="text-lg font-semibold text-gray-900">{assignment.title}</h2>
-                          <p className="text-sm text-gray-500">{assignment.course}</p>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="ml-auto bg-primary/10 text-primary hover:bg-primary/20"
-                          onClick={() => {
-                            // Show confirmation dialog
-                            const confirmed = window.confirm(`Reactivate "${assignment.title}"? This will move it back to the current assignments list.`);
-                            
-                            if (confirmed) {
-                              // Update assignment as incomplete
-                              fetch(`/api/assignments/${assignment.id}`, {
-                                method: 'PUT',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ 
-                                  completed: false,
-                                  // Include original values for other required fields
-                                  title: assignment.title,
-                                  course: assignment.course,
-                                  dueDate: assignment.dueDate,
-                                  priority: assignment.priority,
-                                  estimatedTime: assignment.estimatedTime,
-                                }),
-                              }).then(() => {
-                                refreshData();
-                              });
-                            }
-                          }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                          </svg>
-                          Reactivate
-                        </Button>
-                      </div>
-                      
-                      <div className="mt-3 flex items-center text-sm text-gray-500">
-                        <i className="ri-calendar-check-line mr-1"></i>
-                        <span>Completed</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <TabsContent value="all">
+            <div className="py-12 text-center text-gray-500">
+              All assignments will be shown here
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="completed">
+            <div className="py-12 text-center text-gray-500">
+              Completed assignments will be shown here
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -7,7 +7,7 @@ import TimerDisplay from './TimerDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, ListChecks, CheckCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ListChecks, CheckCircle } from 'lucide-react';
 
 interface TaskTimerSystemProps {
   scheduleData: any[];
@@ -45,10 +45,11 @@ export default function TaskTimerSystem({
     resetAllTimers
   } = useTimerSystem({
     scheduleData,
-    onTimerComplete: (taskId) => {
-      // DISABLED AUTOMATIC SYNCHRONIZATION
-      console.log("Timer complete callback called for task:", taskId, "- NO ACTION TAKEN (manual sync only)");
-      // No automatic invalidation of queries - user must click Update Assignments button
+    onTimerComplete: () => {
+      // Invalidate queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      onRefresh();
     }
   });
   
@@ -72,19 +73,11 @@ export default function TaskTimerSystem({
     
     const previousTask = sortedSchedule[currentTaskIndex - 1];
     
-    // Pause the current timer and save state
-    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
-      pauseTimer(activeTaskId);
-    }
+    // Log the current and previous task states for debugging
+    console.log('Navigating to previous task:', previousTask.taskId);
     
-    // Small delay to ensure state is saved before switch
-    setTimeout(() => {
-      // Log the current and previous task states for debugging
-      console.log('Navigating to previous task:', previousTask.taskId);
-      
-      // Simply switch to the previous task
-      switchToTask(previousTask.taskId);
-    }, 50);
+    // Simply switch to the previous task
+    switchToTask(previousTask.taskId);
   };
   
   // Simple navigation to next task - no completion logic
@@ -93,19 +86,11 @@ export default function TaskTimerSystem({
     
     const nextTask = sortedSchedule[currentTaskIndex + 1];
     
-    // Pause the current timer and save state
-    if (activeTaskId && timerStates[activeTaskId]?.isActive) {
-      pauseTimer(activeTaskId);
-    }
+    // Log the navigation
+    console.log('Navigating to next task:', nextTask.taskId);
     
-    // Small delay to ensure state is saved before switch
-    setTimeout(() => {
-      // Log the navigation
-      console.log('Navigating to next task:', nextTask.taskId);
-      
-      // Simply switch to the next task
-      switchToTask(nextTask.taskId);
-    }, 50);
+    // Simply switch to the next task
+    switchToTask(nextTask.taskId);
   };
   
   // If there's no current task but there are tasks in the schedule, pick the first one
@@ -178,84 +163,10 @@ export default function TaskTimerSystem({
       {/* Task list - more compact version */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
-          <div className="flex items-center">
-            <h3 className="text-sm font-medium text-gray-700">Today's Schedule</h3>
-            <Badge variant="outline" className="text-xs ml-2">
-              {sortedSchedule.filter(item => item.completed).length}/{sortedSchedule.length} Tasks
-            </Badge>
-          </div>
-          
-          {/* Manual save button - syncs task completion states with server */}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={async () => {
-              // Manual synchronization of all completion states
-              console.log("Manual sync requested - saving all task states to server");
-              
-              // Save all task completion states to the server
-              try {
-                // Create an array of promises for each task update
-                const updatePromises = Object.keys(timerStates).map(taskIdStr => {
-                  const taskId = parseInt(taskIdStr);
-                  if (isNaN(taskId)) return null;
-                  
-                  const taskState = timerStates[taskId];
-                  const scheduleItem = scheduleData.find(item => item.taskId === taskId);
-                  
-                  if (!scheduleItem) return null;
-                  
-                  // Calculate minutes spent
-                  const minutesSpent = Math.round(taskState.timeElapsed / 60);
-                  
-                  // Update the task
-                  const taskUpdate = apiRequest(
-                    "PUT",
-                    `/api/tasks/${taskId}`,
-                    { 
-                      completed: taskState.isCompleted,
-                      timeSpent: minutesSpent.toString()
-                    }
-                  );
-                  
-                  // Update the schedule item
-                  const scheduleUpdate = apiRequest(
-                    "PUT", 
-                    `/api/schedule/${scheduleItem.id}`, 
-                    { completed: taskState.isCompleted }
-                  );
-                  
-                  return Promise.all([taskUpdate, scheduleUpdate]);
-                }).filter(Boolean);
-                
-                // Wait for all updates to complete
-                await Promise.all(updatePromises);
-                toast({
-                  title: "Updates saved",
-                  description: "Task completion status has been saved to the server",
-                });
-              } catch (error) {
-                console.error("Failed to save task states:", error);
-                toast({
-                  title: "Update failed",
-                  description: "Failed to save task completion status",
-                  variant: "destructive",
-                });
-              }
-              
-              // Notify parent to refresh data from server
-              onRefresh();
-              
-              // This will trigger a full refresh of the schedule and assignments
-              queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
-            }}
-            className="text-xs"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Update Assignments
-          </Button>
+          <h3 className="text-sm font-medium text-gray-700">Today's Schedule</h3>
+          <Badge variant="outline" className="text-xs">
+            {sortedSchedule.filter(item => item.completed).length}/{sortedSchedule.length} Tasks
+          </Badge>
         </div>
         <div className="divide-y divide-gray-100">
           {sortedSchedule.map((item) => {
@@ -305,16 +216,7 @@ export default function TaskTimerSystem({
                 className={`px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50 transition-colors ${
                   isCurrentTask ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                 }`}
-                onClick={() => {
-                  // Pause any active timer first
-                  if (activeTaskId && timerStates[activeTaskId]?.isActive) {
-                    pauseTimer(activeTaskId);
-                  }
-                  // Small delay to ensure state is saved before switching
-                  setTimeout(() => {
-                    switchToTask(item.taskId);
-                  }, 50);
-                }}
+                onClick={() => switchToTask(item.taskId)}
               >
                 {/* Status indicator - made clickable */}
                 <div 
