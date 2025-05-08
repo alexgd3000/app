@@ -228,12 +228,13 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   };
   
   // Mark a task as complete - only updates completion status, doesn't navigate
+  // NO AUTOMATIC SYNCHRONIZATION - only updates UI state locally
   const completeTask = async (taskId: number, scheduleItemId: number) => {
     if (!timerStates[taskId]) return;
     
-    console.log(`Marking task ${taskId} as complete (scheduleItem: ${scheduleItemId})`);
+    console.log(`Marking task ${taskId} as complete (scheduleItem: ${scheduleItemId}) - LOCAL ONLY`);
     
-    // Pause the timer first but don't trigger API calls yet
+    // Pause the timer first if it's active
     setTimerStates(prev => ({
       ...prev,
       [taskId]: {
@@ -243,7 +244,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
     }));
     
     try {
-      // Update local state immediately for UI feedback
+      // Update local state immediately for UI feedback ONLY - no API calls
       setTimerStates(prev => ({
         ...prev,
         [taskId]: {
@@ -253,47 +254,16 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Save timer states to localStorage before API calls
+      // Save timer states to localStorage for persistence
       saveTimerStates();
       
-      // Calculate minutes spent
+      // Calculate minutes spent - but don't send to server automatically
       const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
+      console.log(`Task ${taskId} completed with ${minutesSpent} minutes spent - waiting for manual refresh`);
       
-      // Update the task and schedule item without awaiting (don't block UI)
-      // These will complete in the background
-      const updateTask = apiRequest(
-        "PUT",
-        `/api/tasks/${taskId}`,
-        { 
-          completed: true,
-          timeSpent: minutesSpent.toString()
-        }
-      ).catch(error => {
-        console.error(`Failed to update task ${taskId}:`, error);
-        throw error;
-      });
-      
-      const updateSchedule = apiRequest(
-        "PUT", 
-        `/api/schedule/${scheduleItemId}`, 
-        { completed: true }
-      ).catch(error => {
-        console.error(`Failed to update schedule item ${scheduleItemId}:`, error);
-        throw error;
-      });
-      
-      // Run both updates in parallel
-      Promise.all([updateTask, updateSchedule])
-        .then(() => {
-          console.log(`Successfully marked task ${taskId} as complete`);
-          // Only notify parent when both API calls are successful
-          onTimerComplete(taskId);
-        })
-        .catch(error => {
-          console.error("Failed to complete task updates:", error);
-        });
+      // NO AUTOMATIC API CALLS - user must click "Update Assignments" button
     } catch (error) {
-      console.error("Failed to process task completion:", error);
+      console.error("Failed to update local task completion state:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({
@@ -310,13 +280,14 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   };
   
   // Undo task completion - toggle a task back to incomplete state
+  // NO AUTOMATIC SYNCHRONIZATION - only updates UI state locally
   const undoTaskCompletion = async (taskId: number, scheduleItemId: number, makeActive: boolean = false) => {
     if (!timerStates[taskId]) return;
     
-    console.log(`Marking task ${taskId} as incomplete (scheduleItem: ${scheduleItemId})`);
+    console.log(`Marking task ${taskId} as incomplete (scheduleItem: ${scheduleItemId}) - LOCAL ONLY`);
     
     try {
-      // Update local state first for immediate UI feedback
+      // Update local state for immediate UI feedback ONLY - no API calls
       setTimerStates(prev => ({
         ...prev,
         [taskId]: {
@@ -325,46 +296,21 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
         }
       }));
       
-      // Save timer states to localStorage before API calls
+      // Save timer states to localStorage for persistence
       saveTimerStates();
       
-      // Only set as active if requested (without waiting for API)
+      // Only set as active if requested
       if (makeActive) {
         setActiveTaskId(taskId);
       }
       
-      // Update the task and schedule item without awaiting (don't block UI)
-      // These will complete in the background
-      const updateTask = apiRequest(
-        "PUT",
-        `/api/tasks/${taskId}`,
-        { completed: false }
-      ).catch(error => {
-        console.error(`Failed to update task ${taskId}:`, error);
-        throw error;
-      });
+      // Calculate minutes spent - but don't send to server automatically
+      const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
+      console.log(`Task ${taskId} marked incomplete with ${minutesSpent} minutes spent - waiting for manual refresh`);
       
-      const updateSchedule = apiRequest(
-        "PUT", 
-        `/api/schedule/${scheduleItemId}`, 
-        { completed: false }
-      ).catch(error => {
-        console.error(`Failed to update schedule item ${scheduleItemId}:`, error);
-        throw error;
-      });
-      
-      // Run both updates in parallel
-      Promise.all([updateTask, updateSchedule])
-        .then(() => {
-          console.log(`Successfully marked task ${taskId} as incomplete`);
-          // Only notify parent when both API calls are successful
-          onTimerComplete(taskId);
-        })
-        .catch(error => {
-          console.error("Failed to undo task completion updates:", error);
-        });
+      // NO AUTOMATIC API CALLS - user must click "Update Assignments" button
     } catch (error) {
-      console.error("Failed to process task status update:", error);
+      console.error("Failed to update local task completion state:", error);
       
       // Revert the local state change on error
       setTimerStates(prev => ({

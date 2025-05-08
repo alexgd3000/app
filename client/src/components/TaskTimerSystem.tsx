@@ -7,7 +7,7 @@ import TimerDisplay from './TimerDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, ListChecks, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ListChecks, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface TaskTimerSystemProps {
   scheduleData: any[];
@@ -46,23 +46,9 @@ export default function TaskTimerSystem({
   } = useTimerSystem({
     scheduleData,
     onTimerComplete: (taskId) => {
-      console.log("Timer complete callback called for task:", taskId);
-      
-      // Find the task in scheduleData to identify the assignment
-      const scheduleItem = scheduleData.find(item => item.taskId === taskId);
-      if (scheduleItem && scheduleItem.task) {
-        // Only invalidate the specific assignment's tasks
-        const assignmentId = scheduleItem.task.assignmentId;
-        if (assignmentId) {
-          console.log(`Refreshing specific task data for assignment: ${assignmentId}`);
-          queryClient.invalidateQueries({
-            queryKey: [`/api/assignments/${assignmentId}/tasks`]
-          });
-        }
-      }
-      
-      // Don't invalidate ALL queries every time - this causes UI refreshes
-      // that interrupt the timer and navigation
+      // DISABLED AUTOMATIC SYNCHRONIZATION
+      console.log("Timer complete callback called for task:", taskId, "- NO ACTION TAKEN (manual sync only)");
+      // No automatic invalidation of queries - user must click Update Assignments button
     }
   });
   
@@ -192,10 +178,84 @@ export default function TaskTimerSystem({
       {/* Task list - more compact version */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-700">Today's Schedule</h3>
-          <Badge variant="outline" className="text-xs">
-            {sortedSchedule.filter(item => item.completed).length}/{sortedSchedule.length} Tasks
-          </Badge>
+          <div className="flex items-center">
+            <h3 className="text-sm font-medium text-gray-700">Today's Schedule</h3>
+            <Badge variant="outline" className="text-xs ml-2">
+              {sortedSchedule.filter(item => item.completed).length}/{sortedSchedule.length} Tasks
+            </Badge>
+          </div>
+          
+          {/* Manual save button - syncs task completion states with server */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={async () => {
+              // Manual synchronization of all completion states
+              console.log("Manual sync requested - saving all task states to server");
+              
+              // Save all task completion states to the server
+              try {
+                // Create an array of promises for each task update
+                const updatePromises = Object.keys(timerStates).map(taskIdStr => {
+                  const taskId = parseInt(taskIdStr);
+                  if (isNaN(taskId)) return null;
+                  
+                  const taskState = timerStates[taskId];
+                  const scheduleItem = scheduleData.find(item => item.taskId === taskId);
+                  
+                  if (!scheduleItem) return null;
+                  
+                  // Calculate minutes spent
+                  const minutesSpent = Math.round(taskState.timeElapsed / 60);
+                  
+                  // Update the task
+                  const taskUpdate = apiRequest(
+                    "PUT",
+                    `/api/tasks/${taskId}`,
+                    { 
+                      completed: taskState.isCompleted,
+                      timeSpent: minutesSpent.toString()
+                    }
+                  );
+                  
+                  // Update the schedule item
+                  const scheduleUpdate = apiRequest(
+                    "PUT", 
+                    `/api/schedule/${scheduleItem.id}`, 
+                    { completed: taskState.isCompleted }
+                  );
+                  
+                  return Promise.all([taskUpdate, scheduleUpdate]);
+                }).filter(Boolean);
+                
+                // Wait for all updates to complete
+                await Promise.all(updatePromises);
+                toast({
+                  title: "Updates saved",
+                  description: "Task completion status has been saved to the server",
+                });
+              } catch (error) {
+                console.error("Failed to save task states:", error);
+                toast({
+                  title: "Update failed",
+                  description: "Failed to save task completion status",
+                  variant: "destructive",
+                });
+              }
+              
+              // Notify parent to refresh data from server
+              onRefresh();
+              
+              // This will trigger a full refresh of the schedule and assignments
+              queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+            }}
+            className="text-xs"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Update Assignments
+          </Button>
         </div>
         <div className="divide-y divide-gray-100">
           {sortedSchedule.map((item) => {
