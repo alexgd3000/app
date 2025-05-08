@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { z } from "zod";
 
 import { Task, insertTaskSchema } from "@shared/schema";
@@ -291,6 +291,50 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
       deleteTaskMutation.mutate(taskId);
     }
   };
+  
+  // Move task up in order
+  const moveTaskUp = (taskIndex: number) => {
+    if (taskIndex <= 0) return; // Already at the top
+    
+    // Create a copy of the tasks array
+    const updatedTasks = [...tasks];
+    
+    // Swap the task with the one above it
+    const temp = updatedTasks[taskIndex];
+    updatedTasks[taskIndex] = updatedTasks[taskIndex - 1];
+    updatedTasks[taskIndex - 1] = temp;
+    
+    // Update order properties
+    const tasksWithNewOrder = updatedTasks.map((task, i) => ({
+      id: task.id,
+      order: i
+    }));
+    
+    // Call the reorder API
+    reorderMutation.mutate(tasksWithNewOrder);
+  };
+  
+  // Move task down in order
+  const moveTaskDown = (taskIndex: number) => {
+    if (taskIndex >= tasks.length - 1) return; // Already at the bottom
+    
+    // Create a copy of the tasks array
+    const updatedTasks = [...tasks];
+    
+    // Swap the task with the one below it
+    const temp = updatedTasks[taskIndex];
+    updatedTasks[taskIndex] = updatedTasks[taskIndex + 1];
+    updatedTasks[taskIndex + 1] = temp;
+    
+    // Update order properties
+    const tasksWithNewOrder = updatedTasks.map((task, i) => ({
+      id: task.id,
+      order: i
+    }));
+    
+    // Call the reorder API
+    reorderMutation.mutate(tasksWithNewOrder);
+  };
 
   // Calculate total time
   const totalTimeMinutes = tasks.reduce(
@@ -339,49 +383,10 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
           {tasks.map((task, index) => (
             <Card
               key={task.id}
-              draggable={editingTaskId !== task.id}
-              onDragStart={(e) => {
-                // Set the dragged task's ID as data
-                e.dataTransfer.setData('text/plain', task.id.toString());
-                // Set a custom drag image/effect
-                e.dataTransfer.effectAllowed = 'move';
-              }}
-              onDragOver={(e) => {
-                // Prevent default to allow drop
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                // Get the ID of the dragged task
-                const draggedTaskId = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                // Don't do anything if dropping on the same task
-                if (draggedTaskId === task.id) return;
-                
-                // Find the positions
-                const draggedTaskIndex = tasks.findIndex(t => t.id === draggedTaskId);
-                const targetTaskIndex = index;
-                
-                if (draggedTaskIndex < 0) return;
-                
-                // Create a new array with the reordered tasks
-                const reorderedTasks = [...tasks];
-                const [movedTask] = reorderedTasks.splice(draggedTaskIndex, 1);
-                reorderedTasks.splice(targetTaskIndex, 0, movedTask);
-                
-                // Update the order property and prepare for API call
-                const tasksWithNewOrder = reorderedTasks.map((t, i) => ({
-                  id: t.id,
-                  order: i
-                }));
-                
-                // Call the reorder API
-                reorderMutation.mutate(tasksWithNewOrder);
-              }}
               className={`p-3 ${
                 editingTaskId === task.id 
                   ? "ring-2 ring-primary" 
-                  : "hover:bg-muted/50 cursor-move"
+                  : "hover:bg-muted/50"
               }`}
             >
               {editingTaskId === task.id ? (
@@ -444,10 +449,39 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
               ) : (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <span>{task.description}</span>
-                    <Badge variant="secondary">
-                      {formatTime(task.timeAllocation)}
-                    </Badge>
+                    <div className="flex flex-col items-center mr-2">
+                      <div className="rounded-full w-5 h-5 bg-muted flex items-center justify-center text-xs font-medium mb-1">
+                        {index + 1}
+                      </div>
+                      <div className="flex flex-col">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+                          disabled={index === 0}
+                          onClick={() => moveTaskUp(index)}
+                          title="Move task up"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+                          disabled={index === tasks.length - 1}
+                          onClick={() => moveTaskDown(index)}
+                          title="Move task down"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{task.description}</span>
+                      <Badge variant="secondary" className="w-fit mt-1">
+                        {formatTime(task.timeAllocation)}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <Button 
