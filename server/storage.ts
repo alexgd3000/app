@@ -578,12 +578,15 @@ export class MemStorage implements IStorage {
     // Combine the sorted task lists with today's/overdue tasks first
     const orderedTasks = [...todaysAndOverdueTasks, ...futureTasks];
     
+    // Flag to track if we've encountered a task that exceeds available time
+    let exceededAvailableTime = false;
+    
     // Schedule tasks in order
     for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // Skip if we don't have enough time left - use actualAvailableMinutes which includes buffer
-      if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
+      // If we already encountered a task that exceeds time, add all subsequent tasks to notScheduled
+      if (exceededAvailableTime) {
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -591,9 +594,20 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // Skip if task would end after our end time
+      // Check if we don't have enough time left - use actualAvailableMinutes which includes buffer
+      if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
+        exceededAvailableTime = true;
+        notScheduled.push({
+          taskId: task.id,
+          assignmentId: task.assignmentId
+        });
+        continue;
+      }
+      
+      // Check if task would end after our end time
       const taskEndTime = new Date(currentTimePointer.getTime() + timeNeeded * 60000);
       if (taskEndTime.getTime() > endTime.getTime()) {
+        exceededAvailableTime = true;
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -614,6 +628,7 @@ export class MemStorage implements IStorage {
         
         // Skip if after adjustment it doesn't fit in available time - use buffered value
         if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
+          exceededAvailableTime = true;
           notScheduled.push({
             taskId: task.id,
             assignmentId: task.assignmentId
@@ -623,6 +638,7 @@ export class MemStorage implements IStorage {
         
         // Skip if after adjustment it ends too late
         if (taskEndTime.getTime() > endTime.getTime()) {
+          exceededAvailableTime = true;
           notScheduled.push({
             taskId: task.id,
             assignmentId: task.assignmentId
@@ -652,6 +668,7 @@ export class MemStorage implements IStorage {
         
         // If break pushes past available time, stop scheduling
         if (availableMinutes && scheduledTime + 15 > actualAvailableMinutes) {
+          exceededAvailableTime = true;
           break;
         }
       }

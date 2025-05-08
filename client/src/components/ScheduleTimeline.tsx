@@ -389,57 +389,17 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             </div>
             <h3 className="text-base font-medium text-gray-900">No schedule for today</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Generate a schedule to optimize your workday
+              Use the "Generate Plan" button above to create your optimized work schedule
             </p>
-            <div className="mt-3 flex flex-col items-center justify-center gap-2">
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">Available:</span>
-                  <div className="flex space-x-2">
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Hours"
-                        className="w-[90px]"
-                        value={availableHours}
-                        onChange={(e) => setAvailableHours(e.target.value)}
-                      />
-                    </div>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="59"
-                        placeholder="Mins"
-                        className="w-[90px]"
-                        value={availableMinutes}
-                        onChange={(e) => setAvailableMinutes(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">Start at:</span>
-                  <Input 
-                    type="time"
-                    className="w-[130px]"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <Button 
-                onClick={() => generateScheduleMutation.mutate()}
-                disabled={generateScheduleMutation.isPending}
-                className="mt-1"
-              >
-                <i className="ri-magic-line mr-1"></i>
-                Generate Schedule
-              </Button>
-            </div>
+            <Button 
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              className="mt-4"
+              variant="outline"
+            >
+              <i className="ri-arrow-up-line mr-1"></i>
+              Use controls above
+            </Button>
           </div>
         ) : (
           <div>
