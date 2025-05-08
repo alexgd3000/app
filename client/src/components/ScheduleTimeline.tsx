@@ -10,6 +10,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@shared/schema";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { RotateCcw } from "lucide-react";
 import TaskTimerSystem from "./TaskTimerSystem";
 
 interface ScheduleTimelineProps {
@@ -443,6 +444,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
             <TaskTimerSystem
               scheduleData={scheduleData}
               onRefresh={onRefresh}
+              onResetAllTimers={(resetFn) => setResetAllTimersFunction(() => resetFn)}
             />
           </div>
         )}
@@ -459,9 +461,19 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
               variant="outline"
               className="text-xs"
               onClick={() => resetAllTimersMutation.mutate()}
-              disabled={resetAllTimersMutation.isPending}
+              disabled={resetAllTimersMutation.isPending || !resetAllTimersFunction}
             >
-              {resetAllTimersMutation.isPending ? 'Resetting...' : 'Reset All Timers'}
+              {resetAllTimersMutation.isPending ? (
+                <span className="flex items-center">
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Resetting...
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  Reset All Timers
+                </span>
+              )}
             </Button>
           </div>
         </CardFooter>
