@@ -148,18 +148,18 @@ export default function TaskTimerSystem({ scheduleData, onRefresh }: TaskTimerSy
     }, 100);
   };
   
-  // If there's no current task but there are tasks in the schedule, pick the first uncompleted one
+  // If there's no current task but there are tasks in the schedule, pick the first one
+  // This only runs on initial load, not when switching between tasks
   useEffect(() => {
-    if (!currentTask && sortedSchedule.length > 0) {
-      const firstUncompleted = sortedSchedule.find(item => !item.completed);
-      if (firstUncompleted) {
-        switchToTask(firstUncompleted.taskId);
-      } else {
-        // All tasks are completed, pick the first one
-        switchToTask(sortedSchedule[0].taskId);
-      }
+    // We only want to auto-select a task when the component first renders
+    // and there's no active task yet - not when switching between tasks
+    if (!currentTask && sortedSchedule.length > 0 && activeTaskId === null) {
+      console.log('No active task - selecting initial task');
+      
+      // Always pick the first task in chronological order
+      switchToTask(sortedSchedule[0].taskId);
     }
-  }, [currentTask, sortedSchedule]);
+  }, [sortedSchedule.length]);
   
   // If no schedule data or active task, show empty state
   if (!currentTask || scheduleData.length === 0) {
