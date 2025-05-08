@@ -564,7 +564,7 @@ export class MemStorage implements IStorage {
     for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // Skip if we don't have enough time left - allow exact fits (>= instead of >)
+      // Skip if we don't have enough time left - allow exact fits
       if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
         notScheduled.push({
           taskId: task.id,
@@ -594,7 +594,7 @@ export class MemStorage implements IStorage {
         // Recalculate end time after lunch
         taskEndTime.setTime(currentTimePointer.getTime() + timeNeeded * 60000);
         
-        // Skip if after adjustment it doesn't fit in available time - allow exact fits (>= instead of >)
+        // Skip if after adjustment it doesn't fit in available time - allow exact fits
         if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
           notScheduled.push({
             taskId: task.id,
