@@ -60,11 +60,14 @@ export default function TaskEditor({ assignmentId, onTasksUpdated }: TaskEditorP
   // Update task order
   const reorderMutation = useMutation({
     mutationFn: async (tasks: {id: number, order: number}[]) => {
+      // Log the tasks payload for debugging
+      console.log("Reordering tasks:", tasks);
+      
       try {
         const response = await apiRequest(
           "PUT", 
           "/api/tasks/reorder", 
-          { tasks }
+          { tasks: tasks }
         );
         return response.json();
       } catch (error: any) {

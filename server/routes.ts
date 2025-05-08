@@ -176,15 +176,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.put("/api/tasks/reorder", async (req: Request, res: Response) => {
     try {
+      // Log the received data for debugging
+      console.log("Received reorder request:", req.body);
+      
       const { tasks } = req.body;
       if (!Array.isArray(tasks)) {
+        console.log("Invalid tasks format:", tasks);
         return res.status(400).json({ message: "Tasks must be an array" });
       }
       
       try {
-        await storage.updateTasksOrder(tasks);
+        // Ensure all tasks have id and order properties
+        const validTasks = tasks.map((task, index) => {
+          if (typeof task.id !== 'number') {
+            throw new Error(`Task at index ${index} has invalid ID: ${task.id}`);
+          }
+          return {
+            id: task.id,
+            order: typeof task.order === 'number' ? task.order : index
+          };
+        });
+        
+        console.log("Processing valid tasks:", validTasks);
+        await storage.updateTasksOrder(validTasks);
         return res.json({ message: "Tasks reordered successfully" });
       } catch (err: any) {
+        console.error("Error updating task order:", err);
         // Specific task not found error
         if (err.message && err.message.includes("Task with ID")) {
           return res.status(404).json({ message: "Task not found", details: err.message });
@@ -192,6 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw err; // Re-throw if it's a different error
       }
     } catch (error: any) {
+      console.error("Server error in task reordering:", error);
       return res.status(500).json({ message: error.message });
     }
   });

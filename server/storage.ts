@@ -463,9 +463,16 @@ export class MemStorage implements IStorage {
     let currentTimePointer = new Date(scheduleStartDate);
     
     // Calculate end time based on available minutes
+    // Add a hidden 15-minute buffer to available time (to allow tasks that exactly fit)
+    const BUFFER_MINUTES = 15;
     let endTime = new Date(currentTimePointer);
+    
+    // Default to 480 minutes (8 hours) if no available minutes are specified
+    let actualAvailableMinutes = availableMinutes ? availableMinutes + BUFFER_MINUTES : 480;
+    
     if (availableMinutes) {
-      endTime.setMinutes(endTime.getMinutes() + availableMinutes);
+      // Add buffer to the available minutes (but we'll check against the original value later)
+      endTime.setMinutes(endTime.getMinutes() + actualAvailableMinutes);
     } else {
       // Default end time at 6 PM if no available minutes specified
       endTime.setHours(18, 0, 0, 0);
@@ -572,18 +579,13 @@ export class MemStorage implements IStorage {
     for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // Skip if we don't have enough time left - allow for exact fits
-      if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
-        // Special case: if this is exactly equal to available time, schedule it
-        if (scheduledTime + timeNeeded === availableMinutes) {
-          // This task fits exactly, so we'll proceed
-        } else {
-          notScheduled.push({
-            taskId: task.id,
-            assignmentId: task.assignmentId
-          });
-          continue;
-        }
+      // Skip if we don't have enough time left - use actualAvailableMinutes which includes buffer
+      if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
+        notScheduled.push({
+          taskId: task.id,
+          assignmentId: task.assignmentId
+        });
+        continue;
       }
       
       // Skip if task would end after our end time
@@ -607,18 +609,13 @@ export class MemStorage implements IStorage {
         // Recalculate end time after lunch
         taskEndTime.setTime(currentTimePointer.getTime() + timeNeeded * 60000);
         
-        // Skip if after adjustment it doesn't fit in available time - allow exact fits
-        if (availableMinutes && scheduledTime + timeNeeded > availableMinutes) {
-          // Special case: if this is exactly equal to available time, schedule it
-          if (scheduledTime + timeNeeded === availableMinutes) {
-            // This task fits exactly, so we'll proceed
-          } else {
-            notScheduled.push({
-              taskId: task.id,
-              assignmentId: task.assignmentId
-            });
-            continue;
-          }
+        // Skip if after adjustment it doesn't fit in available time - use buffered value
+        if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
+          notScheduled.push({
+            taskId: task.id,
+            assignmentId: task.assignmentId
+          });
+          continue;
         }
         
         // Skip if after adjustment it ends too late
@@ -651,7 +648,7 @@ export class MemStorage implements IStorage {
         currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
         
         // If break pushes past available time, stop scheduling
-        if (availableMinutes && scheduledTime + 15 > availableMinutes) {
+        if (availableMinutes && scheduledTime + 15 > actualAvailableMinutes) {
           break;
         }
       }
