@@ -201,6 +201,42 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  // Move to the previous task in the schedule
+  const moveToPreviousTask = () => {
+    if (!currentTask || scheduleData.length === 0) return;
+    
+    // Get all schedule items sorted by start time
+    const sortedItems = [...scheduleData].sort(
+      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    );
+    
+    // Find the index of the current task
+    const currentIndex = sortedItems.findIndex(item => item.id === currentTask.id);
+    
+    // If there is a previous task, set it as current
+    if (currentIndex > 0) {
+      setCurrentTask(sortedItems[currentIndex - 1]);
+    }
+  };
+  
+  // Move to the next task in the schedule
+  const moveToNextTask = () => {
+    if (!currentTask || scheduleData.length === 0) return;
+    
+    // Get all schedule items sorted by start time
+    const sortedItems = [...scheduleData].sort(
+      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    );
+    
+    // Find the index of the current task
+    const currentIndex = sortedItems.findIndex(item => item.id === currentTask.id);
+    
+    // If there is a next task, set it as current
+    if (currentIndex < sortedItems.length - 1) {
+      setCurrentTask(sortedItems[currentIndex + 1]);
+    }
+  };
+
   // Find the current task in progress
   useEffect(() => {
     if (!isLoading && scheduleData && scheduleData.length > 0) {
@@ -357,18 +393,38 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
                 queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
                 
-                // Find the next task in the schedule
-                const nextTask = scheduleData
-                  .filter(item => !item.completed && item.id !== currentTask.id)
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
-                
-                if (nextTask) {
-                  setCurrentTask(nextTask);
-                }
-                
+                // Automatically move to the next task when a task is completed
+                moveToNextTask();
                 onRefresh();
               }}
             />
+            
+            {/* Task navigation controls */}
+            <div className="flex justify-between mt-4">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={moveToPreviousTask}
+                className="flex items-center"
+              >
+                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Previous Task
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={moveToNextTask}
+                className="flex items-center"
+              >
+                Next Task
+                <svg className="h-4 w-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 12H20M20 12L14 6M20 12L14 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Button>
+            </div>
           </div>
         )}
       
