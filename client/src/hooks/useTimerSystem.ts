@@ -152,85 +152,38 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
   
   // Start a specific timer
   const startTimer = (taskId: number) => {
-    console.log(`Starting timer for task ${taskId}`);
-    
-    if (!timerStates[taskId]) {
-      console.error(`Cannot start timer - no timer state found for taskId: ${taskId}`);
-      return;
-    }
+    if (!timerStates[taskId]) return;
     
     // Pause any active timer
     if (activeTaskId && activeTaskId !== taskId) {
-      console.log(`Pausing previously active task ${activeTaskId} before starting task ${taskId}`);
       pauseTimer(activeTaskId);
     }
     
-    console.log(`Setting timer state to active for task ${taskId}`);
-    
-    setTimerStates(prev => {
-      // Check that we have a valid state object for this task
-      if (!prev[taskId]) {
-        console.error(`Timer state for task ${taskId} is missing in the reducer`);
-        // Create a new one if missing
-        prev[taskId] = {
-          taskId,
-          assignmentId: 0, // Will be updated when we get task data
-          timeElapsed: 0,
-          isActive: false,
-          isCompleted: false,
-          lastUpdated: Date.now()
-        };
+    setTimerStates(prev => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        isActive: true,
+        lastUpdated: Date.now()
       }
-      
-      return {
-        ...prev,
-        [taskId]: {
-          ...prev[taskId],
-          isActive: true,
-          lastUpdated: Date.now()
-        }
-      };
-    });
+    }));
     
-    console.log(`Setting active task ID to ${taskId}`);
     setActiveTaskId(taskId);
   };
   
   // Pause a specific timer
   const pauseTimer = (taskId: number) => {
-    console.log(`Pausing timer for task ${taskId}`);
+    if (!timerStates[taskId]) return;
     
-    if (!timerStates[taskId]) {
-      console.error(`Cannot pause timer - no timer state found for taskId: ${taskId}`);
-      return;
-    }
-    
-    // Only pause if it's actually active
-    if (!timerStates[taskId].isActive) {
-      console.log(`Timer for task ${taskId} is already paused`);
-      return;
-    }
-    
-    console.log(`Setting timer state to inactive for task ${taskId}`);
-    
-    setTimerStates(prev => {
-      // Check that we have a valid state object for this task
-      if (!prev[taskId]) {
-        console.error(`Timer state for task ${taskId} is missing in the pause reducer`);
-        return prev; // Don't update if no state exists
+    setTimerStates(prev => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        isActive: false
       }
-      
-      return {
-        ...prev,
-        [taskId]: {
-          ...prev[taskId],
-          isActive: false
-        }
-      };
-    });
+    }));
     
     // Auto-save progress when pausing
-    console.log(`Saving progress for task ${taskId}: ${timerStates[taskId].timeElapsed} seconds`);
     const minutesSpent = Math.round(timerStates[taskId].timeElapsed / 60);
     apiRequest(
       "PUT",
