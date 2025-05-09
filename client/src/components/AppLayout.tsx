@@ -42,7 +42,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <img src="/attached_assets/logo.png" alt="Smart Schedule" className="h-8" />
+                <span className="text-xl font-semibold text-primary">Smart Schedule</span>
               </div>
 
               {/* Mobile menu button */}
