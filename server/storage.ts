@@ -594,9 +594,12 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // Skip if task would end after our end time
+      // Calculate when task would end
       const taskEndTime = new Date(currentTimePointer.getTime() + timeNeeded * 60000);
-      if (taskEndTime.getTime() > endTime.getTime()) {
+      
+      // For automatic scheduling (no availableMinutes), check if task goes beyond the set end time
+      // For manual scheduling (with availableMinutes), we track time by minutes, not end time
+      if (!availableMinutes && taskEndTime.getTime() > endTime.getTime()) {
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -604,10 +607,13 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // Check if task crosses lunch hour (12-1pm)
+      // Check if task crosses lunch hour (12-1pm) - but only apply lunch break if user hasn't specified available minutes
       if (
-        (currentTimePointer.getHours() < 12 && taskEndTime.getHours() >= 12) ||
-        (currentTimePointer.getHours() === 12 && currentTimePointer.getMinutes() < 60)
+        !availableMinutes && // Only apply lunch break if user hasn't specified exact available minutes
+        (
+          (currentTimePointer.getHours() < 12 && taskEndTime.getHours() >= 12) ||
+          (currentTimePointer.getHours() === 12 && currentTimePointer.getMinutes() < 60)
+        )
       ) {
         // Adjust for lunch break - move start time to 1pm
         currentTimePointer.setHours(13, 0, 0, 0);
@@ -624,8 +630,8 @@ export class MemStorage implements IStorage {
           continue;
         }
         
-        // Skip if after adjustment it ends too late
-        if (taskEndTime.getTime() > endTime.getTime()) {
+        // Skip if after adjustment it ends too late (only for auto scheduling without availableMinutes)
+        if (!availableMinutes && taskEndTime.getTime() > endTime.getTime()) {
           notScheduled.push({
             taskId: task.id,
             assignmentId: task.assignmentId
@@ -649,13 +655,15 @@ export class MemStorage implements IStorage {
       // Move time pointer forward
       currentTimePointer = new Date(taskEndTime);
       
-      // Add a 15-minute break after every 2 tasks
-      if (result.length % 3 === 0) {
-        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
+      // Add a 15-minute break after every 2 tasks, but only if not the last task and not exceeding available time
+      if (result.length % 3 === 0 && orderedTasks.indexOf(task) < orderedTasks.length - 1) {
+        // For custom available minutes, only add breaks if we still have at least 30 mins remaining
+        const remainingTime = availableMinutes ? (actualAvailableMinutes - scheduledTime) : 1000; // Large default value
+        const shouldAddBreak = remainingTime >= 30; // Only add break if we have enough time left
         
-        // If break pushes past available time, stop scheduling
-        if (availableMinutes && scheduledTime + 15 > actualAvailableMinutes) {
-          break;
+        if (shouldAddBreak) {
+          currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
+          scheduledTime += 15; // Account for the break in scheduled time
         }
       }
     }
