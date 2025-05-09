@@ -35,10 +35,15 @@ export interface IStorage {
   deleteScheduleItem(id: number): Promise<boolean>;
   
   // Helper methods for generating schedules
-  generateSchedule(assignmentIds: number[], startDate: Date, availableMinutes?: number): Promise<{
+  generateSchedule(assignmentIds: number[], startDate: Date, availableMinutes?: number, prioritizeTodaysDue?: boolean): Promise<{
     scheduleItems: ScheduleItem[];
     notScheduled: { taskId: number; assignmentId: number }[];
     totalTasksTime: number;
+    todaysDueTasksTime: number; 
+    todaysDueCompleted: boolean;
+    extraTasksAdded: number;
+    todaysUnscheduledCount: number;
+    unscheduledTaskDetails: { id: number; description: string; assignmentTitle: string; timeAllocation: number }[];
   }>;
 }
 

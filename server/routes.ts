@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -41,22 +41,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/assignments", async (req: Request, res: Response) => {
     try {
-      // Convert string time values to minutes
-      const body = {
-        ...req.body,
-        estimatedTime: Math.round(parseFloat(req.body.estimatedTime)), // Store as-is, no conversion
-        timeAvailable: 120, // Default value of 2 hours
-        dueDate: new Date(req.body.dueDate)
-      };
+      // First validate the request body 
+      const result = insertAssignmentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid assignment data",
+          errors: result.error.flatten().fieldErrors
+        });
+      }
       
-      // Validate the request body
-      const validatedData = insertAssignmentSchema.parse(body);
-      
-      // Ensure priority is valid
-      PriorityEnum.parse(validatedData.priority);
-      
-      const assignment = await storage.createAssignment(validatedData);
-      return res.status(201).json(assignment);
+      // Create the assignment
+      const newAssignment = await storage.createAssignment(result.data);
+      return res.status(201).json(newAssignment);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
     }
@@ -66,24 +62,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = Number(req.params.id);
       
-      // Format time data if present
-      let body = req.body;
-      if (body.estimatedTime !== undefined) {
-        body.estimatedTime = Math.round(parseFloat(body.estimatedTime));
-      }
-      if (body.timeAvailable !== undefined) {
-        body.timeAvailable = Math.round(parseFloat(body.timeAvailable) * 60);
-      }
-      if (body.dueDate !== undefined) {
-        body.dueDate = new Date(body.dueDate);
+      // Validate priority if provided
+      if (req.body.priority && !PriorityEnum.safeParse(req.body.priority).success) {
+        return res.status(400).json({ 
+          message: "Invalid priority value. Must be 'high', 'medium', or 'low'."
+        });
       }
       
-      // Check if priority is valid
-      if (body.priority) {
-        PriorityEnum.parse(body.priority);
-      }
-      
-      const updated = await storage.updateAssignment(id, body);
+      const updated = await storage.updateAssignment(id, req.body);
       if (!updated) {
         return res.status(404).json({ message: "Assignment not found" });
       }
@@ -105,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: error.message });
     }
   });
-  
+
   // Tasks API
   app.get("/api/assignments/:assignmentId/tasks", async (req: Request, res: Response) => {
     try {
@@ -117,16 +103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get a single task by ID
   app.get("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
       const task = await storage.getTask(id);
-      
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
-      
       return res.json(task);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -135,24 +118,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
-      // Convert timeAllocation to minutes
-      const body = {
-        ...req.body,
-        timeAllocation: Math.round(parseFloat(req.body.timeAllocation))
-      };
+      // First validate the request body 
+      const result = insertTaskSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid task data",
+          errors: result.error.flatten().fieldErrors
+        });
+      }
       
-      const validatedData = insertTaskSchema.parse(body);
-      const task = await storage.createTask(validatedData);
-      
-      // Update the assignment's estimated time to be the sum of all tasks
-      const allTasks = await storage.getTasksByAssignment(task.assignmentId);
-      const totalTime = allTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
-      
-      await storage.updateAssignment(task.assignmentId, {
-        estimatedTime: totalTime
-      });
-      
-      return res.status(201).json(task);
+      // Create the task
+      const newTask = await storage.createTask(result.data);
+      return res.status(201).json(newTask);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
     }
@@ -161,36 +138,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
-      
-      // Format time data if present
-      let body = req.body;
-      if (body.timeAllocation !== undefined) {
-        body.timeAllocation = Math.round(parseFloat(body.timeAllocation));
-      }
-      
-      // Special handling for timeSpent to allow true zero values
-      if (body.timeSpent !== undefined) {
-        // Check if it's specifically set to 0 or "0"
-        if (body.timeSpent === 0 || body.timeSpent === "0") {
-          body.timeSpent = 0; // Explicitly set to 0
-        } else {
-          body.timeSpent = Math.round(parseFloat(body.timeSpent));
-        }
-      }
-      
-      const updated = await storage.updateTask(id, body);
+      const updated = await storage.updateTask(id, req.body);
       if (!updated) {
         return res.status(404).json({ message: "Task not found" });
       }
-      
-      // Update the assignment's estimated time
-      const allTasks = await storage.getTasksByAssignment(updated.assignmentId);
-      const totalTime = allTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
-      
-      await storage.updateAssignment(updated.assignmentId, {
-        estimatedTime: totalTime
-      });
-      
       return res.json(updated);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
@@ -199,101 +150,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.put("/api/tasks/reorder", async (req: Request, res: Response) => {
     try {
-      // Log the received data for debugging
-      console.log("Received reorder request:", JSON.stringify(req.body));
+      const { tasks } = req.body;
       
-      // Handle two possible formats: {tasks: [...]} or direct array
-      let tasksToReorder;
-      if (req.body.tasks && Array.isArray(req.body.tasks)) {
-        tasksToReorder = req.body.tasks;
-      } else if (Array.isArray(req.body)) {
-        tasksToReorder = req.body;
-      } else {
-        console.log("Invalid request format:", req.body);
-        return res.status(400).json({ 
-          message: "Invalid request format. Expected {tasks: [...]}" 
-        });
+      if (!Array.isArray(tasks)) {
+        return res.status(400).json({ message: "Tasks must be an array" });
       }
       
-      // Verify we have tasks to process
-      if (!tasksToReorder || tasksToReorder.length === 0) {
-        console.log("No tasks provided for reordering");
-        return res.status(400).json({ message: "No tasks provided for reordering" });
+      const success = await storage.updateTasksOrder(tasks);
+      if (!success) {
+        return res.status(400).json({ message: "Failed to reorder tasks" });
       }
       
-      try {
-        // Ensure all tasks have id and order properties
-        const validTasks = tasksToReorder.map((task: { id: string | number, order?: number }, index: number) => {
-          // Convert task ID to number for consistent handling
-          const taskId = typeof task.id === 'string' ? parseInt(task.id, 10) : task.id;
-          if (isNaN(taskId)) {
-            throw new Error(`Task at index ${index} has invalid ID: ${task.id}`);
-          }
-          
-          return {
-            id: taskId,
-            order: typeof task.order === 'number' ? task.order : index
-          };
-        });
-        
-        console.log("Processing valid tasks:", JSON.stringify(validTasks));
-        
-        // Debug all existing tasks
-        const allCurrentTasks = Array.from((storage as any).tasks.entries());
-        console.log("All tasks in system:", JSON.stringify(allCurrentTasks));
-        
-        // Try to verify all tasks exist before reordering
-        for (const task of validTasks) {
-          const existingTask = await storage.getTask(task.id);
-          console.log(`Looking for task ID ${task.id}, found:`, existingTask);
-          if (!existingTask) {
-            return res.status(404).json({ 
-              message: `Task with ID ${task.id} not found` 
-            });
-          }
-        }
-        
-        await storage.updateTasksOrder(validTasks);
-        return res.json({ message: "Tasks reordered successfully" });
-      } catch (err: any) {
-        console.error("Error updating task order:", err);
-        // Specific task not found error
-        if (err.message && err.message.includes("Task with ID")) {
-          return res.status(404).json({ message: "Task not found", details: err.message });
-        }
-        return res.status(400).json({ message: err.message });
-      }
+      return res.json({ message: "Tasks reordered successfully" });
     } catch (error: any) {
-      console.error("Server error in task reordering:", error);
-      return res.status(500).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   });
   
   app.delete("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
-      
-      // Get the task before deleting to know its assignment
-      const task = await storage.getTask(id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-      
-      const assignmentId = task.assignmentId;
       const success = await storage.deleteTask(id);
-      
       if (!success) {
         return res.status(404).json({ message: "Task not found" });
       }
-      
-      // Update the assignment's estimated time
-      const remainingTasks = await storage.getTasksByAssignment(assignmentId);
-      const totalTime = remainingTasks.reduce((sum, t) => sum + t.timeAllocation, 0);
-      
-      await storage.updateAssignment(assignmentId, {
-        estimatedTime: totalTime
-      });
-      
       return res.json({ message: "Task deleted successfully" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -303,12 +183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Schedule API
   app.get("/api/schedule", async (req: Request, res: Response) => {
     try {
-      // Default to today if no date provided
-      const dateParam = req.query.date as string || new Date().toISOString();
-      const date = new Date(dateParam);
+      // Parse date from query or use today's date
+      let date = new Date();
       
-      if (isNaN(date.getTime())) {
-        return res.status(400).json({ message: "Invalid date format" });
+      if (req.query.date) {
+        date = new Date(req.query.date as string);
+        if (isNaN(date.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
       }
       
       const scheduleItems = await storage.getScheduleForDate(date);
