@@ -94,10 +94,15 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       // Get assignmentIds
       const assignmentIds = sortedAssignments.map((a: any) => a.id);
       
-      // Create a date object from today with the specified start time
+      // Create a date object for today with the specified start time
       const today = new Date();
       const [hours, minutes] = startTime.split(':').map(Number);
       today.setHours(hours, minutes, 0, 0);
+      
+      // Format date to match the query used in Dashboard.tsx
+      // This ensures the newly generated schedule will be shown immediately
+      const todayString = format(today, 'yyyy-MM-dd');
+      console.log("Generating schedule for date:", todayString);
       
       // Generate a schedule with available minutes if provided
       const payload: any = {
@@ -110,7 +115,7 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       const totalMinutes = getTotalMinutes();
       if (totalMinutes !== undefined) {
         // Add a hidden 15-minute buffer to ensure tasks that exactly fit will be scheduled
-        payload.availableMinutes = totalMinutes + 15;
+        payload.availableMinutes = totalMinutes;
       }
       
       const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, payload);

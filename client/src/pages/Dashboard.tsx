@@ -27,17 +27,29 @@ export default function Dashboard() {
     queryKey: ['/api/assignments/incomplete'],
   });
 
+  // Get the current date formatted for the query
+  const todayFormatted = format(new Date(), 'yyyy-MM-dd');
+  
   const { 
     data: scheduleData = [], 
     isLoading: scheduleLoading,
     refetch: refetchSchedule
   } = useQuery({
-    queryKey: ['/api/schedule', format(new Date(), 'yyyy-MM-dd')],
+    queryKey: ['/api/schedule', todayFormatted],
+    queryFn: async () => {
+      const res = await fetch(`/api/schedule?date=${todayFormatted}`);
+      if (!res.ok) throw new Error('Failed to fetch schedule');
+      return res.json();
+    }
   });
 
   // Effect to find if there's an active assignment for the timer
   useEffect(() => {
-    const activeScheduleItem = scheduleData.find(item => !item.completed && new Date(item.startTime) <= new Date() && new Date(item.endTime) >= new Date());
+    const activeScheduleItem = scheduleData.find((item: any) => 
+      !item.completed && 
+      new Date(item.startTime) <= new Date() && 
+      new Date(item.endTime) >= new Date()
+    );
     
     if (activeScheduleItem && activeScheduleItem.task) {
       setActiveAssignmentId(activeScheduleItem.task.assignmentId);
