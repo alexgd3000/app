@@ -10,6 +10,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import UploadPage from "@/pages/UploadPage";
 import PlannerPage from "@/pages/PlannerPage";
 import FocusPage from "@/pages/FocusPage";
+import FocusModePage from "@/pages/FocusModePage";
 import AppLayout from "@/components/AppLayout";
 
 function Router() {
@@ -36,6 +37,11 @@ function Router() {
       <Route path="/focus">
         <AppLayout>
           <FocusPage />
+        </AppLayout>
+      </Route>
+      <Route path="/focus-mode">
+        <AppLayout>
+          <FocusModePage />
         </AppLayout>
       </Route>
       <Route path="/dashboard">
