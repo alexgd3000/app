@@ -26,6 +26,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: error.message });
     }
   });
+  
+  // Get completed assignments
+  app.get("/api/assignments/completed", async (req: Request, res: Response) => {
+    try {
+      const allAssignments = await storage.getAllAssignments();
+      const completedAssignments = allAssignments.filter(assignment => assignment.completed === true);
+      return res.json(completedAssignments);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
 
   app.get("/api/assignments/:id", async (req: Request, res: Response) => {
     try {
@@ -73,6 +84,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updated) {
         return res.status(404).json({ message: "Assignment not found" });
       }
+      
+      // If marking assignment as completed/uncompleted, update all associated tasks
+      if (req.body.hasOwnProperty('completed')) {
+        const tasks = await storage.getTasksByAssignment(id);
+        
+        // Update all tasks to match the assignment completion status
+        for (const task of tasks) {
+          await storage.updateTask(task.id, { completed: req.body.completed });
+        }
+        
+        // Get the updated tasks to return
+        const updatedTasks = await storage.getTasksByAssignment(id);
+        return res.json({ assignment: updated, tasks: updatedTasks });
+      }
+      
       return res.json(updated);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
