@@ -13,6 +13,8 @@ interface TaskTimerSystemProps {
   scheduleData: any[];
   onRefresh: () => void;
   onResetAllTimers?: (resetFn: () => Promise<void>) => void;
+  unscheduledTaskDetails?: { id: number; description: string; assignmentTitle: string; timeAllocation: number; }[];
+  availableMinutes?: number;
 }
 
 export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTimers }: TaskTimerSystemProps) {
@@ -96,7 +98,8 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
       // Always pick the first task in chronological order
       switchToTask(sortedSchedule[0].taskId);
     }
-  }, [currentTask, sortedSchedule, activeTaskId, switchToTask]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedSchedule.length, activeTaskId]);
   
   // Pass the resetAllTimers function to the parent component
   useEffect(() => {
