@@ -44,7 +44,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <div className="flex-shrink-0">
                 <img src="/attached_assets/logo.png" alt="Smart Schedule" className="h-8" />
               </div>
-              
+
               {/* Mobile menu button */}
               <Button
                 variant="ghost"
@@ -55,7 +55,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <i className="ri-menu-line text-xl"></i>
               </Button>
             </div>
-            
+
             {/* Main navigation for desktop */}
             <nav className="hidden md:flex space-x-1 ml-8">
               <Link href="/profile">
@@ -64,21 +64,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   Profile
                 </a>
               </Link>
-              
+
               <Link href="/upload">
                 <a className={getNavItemClass("/upload")}>
                   <Upload className="mr-2 h-5 w-5" />
                   Upload
                 </a>
               </Link>
-              
+
               <Link href="/planner">
                 <a className={getNavItemClass("/planner")}>
                   <Calendar className="mr-2 h-5 w-5" />
                   Planner
                 </a>
               </Link>
-              
+
               <Link href="/focus">
                 <a className={getNavItemClass("/focus")}>
                   <Clock className="mr-2 h-5 w-5" />
@@ -105,7 +105,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </div>
                 </div>
               )}
-              
+
               {/* Notifications & Profile */}
               <div className="flex items-center space-x-2">
                 <Button
@@ -115,7 +115,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 >
                   <i className="ri-notification-3-line text-xl"></i>
                 </Button>
-                
+
                 <Link href="/profile">
                   <a className="flex items-center">
                     <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700">
