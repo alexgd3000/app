@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Upload, Calendar, Clock, Menu } from "lucide-react";
+import { User, Upload, Calendar, Clock, Menu, Focus, Timer } from "lucide-react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,6 +18,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: "Upload", path: "/upload", icon: <Upload className="h-5 w-5" /> },
     { name: "Planner", path: "/planner", icon: <Calendar className="h-5 w-5" /> },
     { name: "Focus", path: "/focus", icon: <Clock className="h-5 w-5" /> },
+    { name: "Focus Mode", path: "/focus-mode", icon: <Timer className="h-5 w-5" /> },
   ];
   
   return (
