@@ -9,7 +9,7 @@ export default function FocusPage() {
     isLoading: scheduleLoading,
     refetch: refetchSchedule
   } = useQuery<ScheduleItem[]>({
-    queryKey: ['/api/schedule', format(new Date(), 'yyyy-MM-dd')],
+    queryKey: ['/api/schedule'],
   });
 
   // Combine refetch functions for easier data refreshing
