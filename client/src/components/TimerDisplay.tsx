@@ -79,9 +79,9 @@ export default function TimerDisplay({
           <div className="flex-grow">
             <div className="flex items-center gap-1">
               {timerState.isCompleted ? (
-                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
               ) : timerState.isActive ? (
-                <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+                <div className="h-4 w-4 rounded-full bg-indigo-500 animate-pulse flex-shrink-0" />
               ) : (
                 <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
               )}
@@ -110,11 +110,11 @@ export default function TimerDisplay({
           
           {/* Status badge */}
           {timerState.isCompleted ? (
-            <Badge variant="outline" className="ml-auto text-xs bg-green-50 text-green-700 border-green-200">
+            <Badge variant="outline" className="ml-auto text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
               Completed
             </Badge>
           ) : (
-            <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700 border-blue-200">
+            <Badge variant="outline" className="ml-auto text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
               {timerState.isActive ? "Active" : "Paused"}
             </Badge>
           )}
@@ -159,8 +159,8 @@ export default function TimerDisplay({
               size="sm"
               variant="outline"
               className={`h-8 text-xs ${timerState.isCompleted ? 
-                'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-200' : 
-                'bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 border-green-200'
+                'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border-indigo-200' : 
+                'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 border-emerald-200'
               }`}
               onClick={timerState.isCompleted ? onUndo : onComplete}
             >

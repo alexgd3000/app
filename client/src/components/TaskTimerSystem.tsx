@@ -250,9 +250,9 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
                   title={item.completed ? "Mark as incomplete" : "Mark as complete"}
                 >
                   {item.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 hover:text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
                   ) : timerState?.isActive ? (
-                    <div className="h-4 w-4 rounded-full bg-blue-500 animate-pulse hover:bg-blue-600" />
+                    <div className="h-4 w-4 rounded-full bg-indigo-500 animate-pulse hover:bg-indigo-600" />
                   ) : (
                     <div className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-gray-500 hover:bg-gray-100" />
                   )}
@@ -275,7 +275,7 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
                 {/* Timer */}
                 <div className="ml-2 flex-shrink-0 text-right">
                   <div className="flex items-center">
-                    <span className={`text-sm font-medium ${timerState?.timeElapsed > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <span className={`text-sm font-medium ${timerState?.timeElapsed > 0 ? 'text-indigo-600' : 'text-gray-500'}`}>
                       {timerState ? 
                         `${Math.floor(timerState.timeElapsed / 60)}:${(timerState.timeElapsed % 60).toString().padStart(2, '0')}` :
                         '0:00'
