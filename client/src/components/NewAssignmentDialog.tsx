@@ -39,9 +39,10 @@ const assignmentFormSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   course: z.string().min(1, "Course is required"),
   description: z.string().optional(),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: z.coerce.date(),
   priority: z.enum(["high", "medium", "low"]),
-  estimatedTime: z.coerce.number().default(0), // Default to 0, will be calculated based on tasks
+  estimatedTime: z.coerce.number().default(0),
+  timeAvailable: z.coerce.number().default(120), // Default 2 hours in minutes
 });
 
 type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
