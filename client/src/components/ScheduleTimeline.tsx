@@ -113,20 +113,6 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
         payload.availableMinutes = totalMinutes + 15;
       }
       
-      // First clear existing schedule items to avoid conflicts
-      try {
-        const existingSchedule = await apiRequest("GET", `/api/schedule`);
-        const scheduleData = await existingSchedule.json();
-        
-        // Delete all existing schedule items one by one
-        for (const item of scheduleData) {
-          await apiRequest("DELETE", `/api/schedule/${item.id}`);
-        }
-      } catch (error) {
-        console.error("Error clearing existing schedule:", error);
-      }
-      
-      // Now generate the new schedule
       const scheduleResponse = await apiRequest("POST", `/api/schedule/generate`, payload);
       return scheduleResponse.json();
     },
@@ -165,18 +151,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
         setUnscheduledTaskDetails(data.unscheduledTaskDetails);
       }
       
-      // Reset timer states if we have a reset function
-      if (resetAllTimersFunction) {
-        resetAllTimersFunction();
-      }
-      
-      // Force a refresh of the schedule data
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-      
-      // Add a small delay to ensure the UI updates
-      setTimeout(() => {
-        onRefresh();
-      }, 100);
+      onRefresh();
       
       // Generate appropriate messages
       if (todaysTasksUnscheduled > 0) {
@@ -214,11 +190,8 @@ export default function ScheduleTimeline({ isLoading, scheduleData, onRefresh }:
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate queries and refresh with a small delay
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
-      setTimeout(() => {
-        onRefresh();
-      }, 100);
+      onRefresh();
     },
     onError: (error: Error) => {
       toast({

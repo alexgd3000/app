@@ -97,11 +97,6 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       }
     }
     
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduleData.length]);
-  
-  // Setup auto-save interval in a separate effect
-  useEffect(() => {
     // Setup auto-save interval
     const intervalId = window.setInterval(() => {
       // Save all timer states to localStorage
@@ -133,8 +128,7 @@ export function useTimerSystem({ scheduleData, onTimerComplete }: UseTimerSystem
       }
       saveTimerStates();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scheduleData]);
   
   // Save timer states to localStorage
   const saveTimerStates = () => {
