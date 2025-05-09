@@ -476,6 +476,9 @@ export class MemStorage implements IStorage {
     if (availableMinutes) {
       // Add buffer to the available minutes (but we'll check against the original value later)
       endTime.setMinutes(endTime.getMinutes() + actualAvailableMinutes);
+      
+      // Remove any end time restrictions if user has specified available minutes
+      // This allows scheduling to use the full available time regardless of 18:00 limit
     } else {
       // Default end time at 6 PM if no available minutes specified
       endTime.setHours(18, 0, 0, 0);
