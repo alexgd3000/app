@@ -466,15 +466,15 @@ export class MemStorage implements IStorage {
     let currentTimePointer = new Date(scheduleStartDate);
     
     // Calculate end time based on available minutes
-    // No buffer needed - we want exact time calculations
-    const BUFFER_MINUTES = 0; // Removed buffer
+    // Add a hidden 15-minute buffer to available time (to allow tasks that exactly fit)
+    const BUFFER_MINUTES = 15;
     let endTime = new Date(currentTimePointer);
     
     // Default to 480 minutes (8 hours) if no available minutes are specified
-    let actualAvailableMinutes = availableMinutes ? availableMinutes : 480;
+    let actualAvailableMinutes = availableMinutes ? availableMinutes + BUFFER_MINUTES : 480;
     
     if (availableMinutes) {
-      // Set exact end time based on available minutes
+      // Add buffer to the available minutes (but we'll check against the original value later)
       endTime.setMinutes(endTime.getMinutes() + actualAvailableMinutes);
     } else {
       // Default end time at 6 PM if no available minutes specified
@@ -578,25 +578,12 @@ export class MemStorage implements IStorage {
     // Combine the sorted task lists with today's/overdue tasks first
     const orderedTasks = [...todaysAndOverdueTasks, ...futureTasks];
     
-    // Flag to track if we've encountered a task that exceeds available time
-    let exceededAvailableTime = false;
-    
     // Schedule tasks in order
     for (const task of orderedTasks) {
       const timeNeeded = task.timeAllocation;
       
-      // If we already encountered a task that exceeds time, add all subsequent tasks to notScheduled
-      if (exceededAvailableTime) {
-        notScheduled.push({
-          taskId: task.id,
-          assignmentId: task.assignmentId
-        });
-        continue;
-      }
-      
-      // Check if we don't have enough time left - use actualAvailableMinutes which includes buffer
+      // Skip if we don't have enough time left - use actualAvailableMinutes which includes buffer
       if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
-        exceededAvailableTime = true;
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -604,10 +591,9 @@ export class MemStorage implements IStorage {
         continue;
       }
       
-      // Check if task would end after our end time
+      // Skip if task would end after our end time
       const taskEndTime = new Date(currentTimePointer.getTime() + timeNeeded * 60000);
       if (taskEndTime.getTime() > endTime.getTime()) {
-        exceededAvailableTime = true;
         notScheduled.push({
           taskId: task.id,
           assignmentId: task.assignmentId
@@ -628,7 +614,6 @@ export class MemStorage implements IStorage {
         
         // Skip if after adjustment it doesn't fit in available time - use buffered value
         if (availableMinutes && scheduledTime + timeNeeded > actualAvailableMinutes) {
-          exceededAvailableTime = true;
           notScheduled.push({
             taskId: task.id,
             assignmentId: task.assignmentId
@@ -638,7 +623,6 @@ export class MemStorage implements IStorage {
         
         // Skip if after adjustment it ends too late
         if (taskEndTime.getTime() > endTime.getTime()) {
-          exceededAvailableTime = true;
           notScheduled.push({
             taskId: task.id,
             assignmentId: task.assignmentId
@@ -662,17 +646,14 @@ export class MemStorage implements IStorage {
       // Move time pointer forward
       currentTimePointer = new Date(taskEndTime);
       
-      // Add a 15-minute break after every 2 tasks, but only if there's room for it
+      // Add a 15-minute break after every 2 tasks
       if (result.length % 3 === 0) {
-        // Check if adding a break would exceed available time
+        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
+        
+        // If break pushes past available time, stop scheduling
         if (availableMinutes && scheduledTime + 15 > actualAvailableMinutes) {
-          exceededAvailableTime = true;
           break;
         }
-        
-        // Add the break to our time tracking
-        scheduledTime += 15;
-        currentTimePointer.setMinutes(currentTimePointer.getMinutes() + 15);
       }
     }
     

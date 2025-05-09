@@ -441,7 +441,33 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
               <p className="text-xs text-gray-500">{formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}</p>
             </div>
           </div>
-          {/* Schedule button removed as per request */}
+          {isActive ? (
+            <Button 
+              variant="outline"
+              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
+              onClick={() => {
+                // Navigate to the schedule tab where the tasks can be managed in the Today's Schedule view
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              View Schedule
+            </Button>
+          ) : (
+            <Button 
+              variant="default"
+              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
+              onClick={() => {
+                // Generate a schedule for this assignment
+                toast({
+                  title: "Schedule generation",
+                  description: "Go to Today's Schedule to generate a schedule including this assignment",
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              Schedule Tasks
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>
