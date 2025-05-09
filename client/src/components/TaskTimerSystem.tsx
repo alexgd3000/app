@@ -7,7 +7,7 @@ import TimerDisplay from './TimerDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, ListChecks, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ListChecks, CheckCircle, RefreshCw, RotateCcw } from 'lucide-react';
 
 interface TaskTimerSystemProps {
   scheduleData: any[];
@@ -18,11 +18,66 @@ interface TaskTimerSystemProps {
 export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTimers }: TaskTimerSystemProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isUpdatingAssignments, setIsUpdatingAssignments] = useState(false);
   
   // Get all schedule items sorted by start time
   const sortedSchedule = [...scheduleData].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   );
+  
+  // Function to update all task completion statuses in assignments based on schedule data
+  const updateAssignmentTasksFromSchedule = async () => {
+    try {
+      setIsUpdatingAssignments(true);
+      
+      // Group tasks by assignment ID for batch processing
+      const taskUpdates = scheduleData.reduce((acc, item) => {
+        if (!item.task || !item.assignment) return acc;
+        
+        // Create a key for this assignment if it doesn't exist
+        if (!acc[item.task.assignmentId]) {
+          acc[item.task.assignmentId] = [];
+        }
+        
+        // Add this task to the appropriate assignment group
+        acc[item.task.assignmentId].push({
+          taskId: item.taskId,
+          completed: item.completed
+        });
+        
+        return acc;
+      }, {} as Record<number, { taskId: number, completed: boolean }[]>);
+      
+      // Update each task with its status from the scheduler
+      const taskUpdatesArray = Object.values(taskUpdates).flat() as Array<{ taskId: number; completed: boolean }>;
+      
+      for (const { taskId, completed } of taskUpdatesArray) {
+        await apiRequest("PUT", `/api/tasks/${taskId}`, { completed });
+      }
+      
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments/completed'] });
+      
+      // Show success message
+      toast({
+        title: "Assignments updated",
+        description: "Task completion status has been synced with the schedule."
+      });
+      
+      onRefresh();
+    } catch (error) {
+      console.error("Error updating assignments from schedule:", error);
+      toast({
+        title: "Update failed",
+        description: "There was an error updating assignment tasks.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingAssignments(false);
+    }
+  };
   
   // Initialize timer system
   const {
@@ -232,6 +287,30 @@ export default function TaskTimerSystem({ scheduleData, onRefresh, onResetAllTim
               </div>
             );
           })}
+        </div>
+        {/* Action buttons */}
+        <div className="p-3 bg-gray-50 border-t flex items-center justify-end space-x-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="text-xs"
+            onClick={updateAssignmentTasksFromSchedule}
+            disabled={isUpdatingAssignments}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Update Assignments
+          </Button>
+          {resetAllTimers && (
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs"
+              onClick={resetAllTimers}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              Reset All Timers
+            </Button>
+          )}
         </div>
       </div>
     </div>
