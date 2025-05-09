@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-      --background: 60 33% 98%;
---foreground: 133 50% 8%;
+      --background: 40 33% 98%;
+--foreground: 127 47% 8%;
 --muted: 60 4.8% 95.9%;
 --muted-foreground: 25 5.3% 44.7%;
 --popover: 40 33% 98%;
@@ -15,9 +15,9 @@
 --input: 276 44% 85%;
 --primary: 32 84% 71%;
 --primary-foreground: 127 47% 8%;
---secondary: 232 1% 31%;
+--secondary: 240 1% 31%;
 --secondary-foreground: 40 33% 98%;
---accent: 267 51% 85%;
+--accent: 276 44% 85%;
 --accent-foreground: 127 47% 8%;
 --destructive: 0 84.2% 60.2%;
 --destructive-foreground: 60 9.1% 97.8%;
