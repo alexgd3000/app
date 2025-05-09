@@ -411,9 +411,22 @@ export class MemStorage implements IStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
     
-    return Array.from(this.scheduleItems.values())
+    console.log("Looking for schedule items between:", startOfDay.toISOString(), "and", endOfDay.toISOString());
+    
+    const allItems = Array.from(this.scheduleItems.values());
+    console.log("Total schedule items in storage:", allItems.length);
+    
+    // Debug: Print all schedule item start times
+    allItems.forEach(item => {
+      console.log("Schedule item:", item.id, "startTime:", item.startTime, "taskId:", item.taskId);
+    });
+    
+    return allItems
       .filter(item => {
-        return item.startTime >= startOfDay && item.startTime <= endOfDay;
+        const itemDate = new Date(item.startTime);
+        const passes = itemDate >= startOfDay && itemDate <= endOfDay;
+        console.log("Item", item.id, "with date", itemDate, passes ? "PASSES" : "FAILS", "the filter");
+        return passes;
       })
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }

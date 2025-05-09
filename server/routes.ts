@@ -193,6 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log("Getting schedule for date:", date.toISOString());
       const scheduleItems = await storage.getScheduleForDate(date);
       
       // Expand schedule items to include task and assignment details
@@ -225,8 +226,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid date format" });
       }
       
+      console.log("Generating schedule for date:", date.toISOString());
+      console.log("Assignment IDs:", assignmentIds);
+      
       // Convert availableMinutes to a number if it exists
       const minutes = availableMinutes ? Number(availableMinutes) : undefined;
+      console.log("Available minutes:", minutes);
       
       const result = await storage.generateSchedule(
         assignmentIds, 
