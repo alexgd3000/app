@@ -34,6 +34,7 @@ interface AssignmentCardProps {
 export default function AssignmentCard({ assignment, isActive, viewMode, onRefresh }: AssignmentCardProps) {
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const { toast } = useToast();
   
   const { data: tasks = [], refetch: refetchTasks } = useQuery<Task[]>({
@@ -63,6 +64,44 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+  
+  // Toggle assignment completion status
+  const toggleAssignmentCompletionMutation = useMutation({
+    mutationFn: async (completed: boolean) => {
+      const response = await apiRequest("PUT", `/api/assignments/${assignment.id}`, {
+        completed
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments/incomplete'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments/completed'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/tasks`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      
+      const statusText = assignment.completed ? 'Current' : 'Completed';
+      toast({
+        title: `Assignment Moved to ${statusText}`,
+        description: `"${assignment.title}" has been moved to ${statusText} Assignments`,
+      });
+      
+      // Close the confirmation dialog
+      setShowCompleteDialog(false);
+      
+      // Refresh the component
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating assignment",
+        description: error.message,
+        variant: "destructive",
+      });
+      setShowCompleteDialog(false);
     },
   });
 
@@ -340,7 +379,8 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
   }
   
   return (
-    <Card className={`overflow-hidden flex flex-col ${isActive ? 'border-2 border-primary-300' : ''}`}>
+    <>
+      <Card className={`overflow-hidden flex flex-col ${isActive ? 'border-2 border-primary-300' : ''}`}>
       {/* Card Header */}
       <CardHeader className="p-6 border-b border-gray-200">
         <div className="flex justify-between items-start">
@@ -451,35 +491,55 @@ export default function AssignmentCard({ assignment, isActive, viewMode, onRefre
               <p className="text-xs text-gray-500">{formatTime(totalTimeSpent)} used of {formatTime(totalTimeAllocation)}</p>
             </div>
           </div>
-          {isActive ? (
+          {assignment.completed ? (
             <Button 
               variant="outline"
-              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
-              onClick={() => {
-                // Navigate to the schedule tab where the tasks can be managed in the Today's Schedule view
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onClick={() => setShowCompleteDialog(true)}
+              className="flex items-center gap-2"
             >
-              View Schedule
+              <UndoIcon className="h-4 w-4" />
+              Move to Current
             </Button>
           ) : (
             <Button 
               variant="default"
-              disabled={tasks.length === 0 || tasks.every(t => t.completed)}
-              onClick={() => {
-                // Generate a schedule for this assignment
-                toast({
-                  title: "Schedule generation",
-                  description: "Go to Today's Schedule to generate a schedule including this assignment",
-                });
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onClick={() => setShowCompleteDialog(true)}
+              className="flex items-center gap-2"
             >
-              Schedule Tasks
+              <CheckCircle className="h-4 w-4" />
+              Complete Assignment
             </Button>
           )}
         </div>
       </CardFooter>
     </Card>
+    
+    {/* Confirmation Dialog for completing/moving assignment */}
+    <AlertDialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {assignment.completed 
+              ? "Move Assignment Back to Current?" 
+              : "Mark Assignment as Complete?"}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {assignment.completed 
+              ? `This will move "${assignment.title}" back to your Current Assignments list. All tasks will become eligible for scheduling again.` 
+              : `This will mark "${assignment.title}" as completed and move it to your Completed Assignments section. All tasks will be marked as complete and removed from your schedule.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => toggleAssignmentCompletionMutation.mutate(!assignment.completed)}
+            className={assignment.completed ? "bg-primary-500 hover:bg-primary-600" : "bg-green-600 hover:bg-green-700"}
+          >
+            {assignment.completed ? "Move to Current" : "Complete Assignment"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

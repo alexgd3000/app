@@ -16,11 +16,19 @@ export default function Planner() {
   const [sortBy, setSortBy] = useState<string>("dueDate");
 
   const { 
-    data: assignments = [], 
-    isLoading: assignmentsLoading,
-    refetch: refetchAssignments
+    data: currentAssignments = [], 
+    isLoading: currentAssignmentsLoading,
+    refetch: refetchCurrentAssignments
   } = useQuery<Assignment[]>({
     queryKey: ['/api/assignments/incomplete'],
+  });
+  
+  const { 
+    data: completedAssignments = [], 
+    isLoading: completedAssignmentsLoading,
+    refetch: refetchCompletedAssignments
+  } = useQuery<Assignment[]>({
+    queryKey: ['/api/assignments/completed'],
   });
 
   const { 
@@ -46,22 +54,29 @@ export default function Planner() {
   }, [scheduleData]);
 
   // Sort assignments based on the selected criteria
-  const sortedAssignments = [...assignments].sort((a, b) => {
-    switch (sortBy) {
-      case "dueDate":
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      case "priority":
-        const priorityOrder: Record<string, number> = { "high": 0, "medium": 1, "low": 2 };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-      case "estimatedTime":
-        return a.estimatedTime - b.estimatedTime;
-      default:
-        return 0;
-    }
-  });
+  const sortAssignments = (assignments: Assignment[]) => {
+    return [...assignments].sort((a, b) => {
+      switch (sortBy) {
+        case "dueDate":
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        case "priority":
+          const priorityOrder: Record<string, number> = { "high": 0, "medium": 1, "low": 2 };
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        case "estimatedTime":
+          return a.estimatedTime - b.estimatedTime;
+        default:
+          return 0;
+      }
+    });
+  };
+  
+  // Get sorted assignments for both current and completed tabs
+  const sortedCurrentAssignments = sortAssignments(currentAssignments);
+  const sortedCompletedAssignments = sortAssignments(completedAssignments);
 
   const refreshData = () => {
-    refetchAssignments();
+    refetchCurrentAssignments();
+    refetchCompletedAssignments();
     refetchSchedule();
   };
 
@@ -129,23 +144,17 @@ export default function Planner() {
               Current Assignments
             </TabsTrigger>
             <TabsTrigger
-              value="all"
-              className="py-4 px-1 data-[state=active]:border-primary-500 data-[state=active]:text-primary-600 data-[state=active]:border-b-2 border-transparent rounded-none focus:ring-0"
-            >
-              All Assignments
-            </TabsTrigger>
-            <TabsTrigger
               value="completed"
               className="py-4 px-1 data-[state=active]:border-primary-500 data-[state=active]:text-primary-600 data-[state=active]:border-b-2 border-transparent rounded-none focus:ring-0"
             >
-              Completed
+              Completed Assignments
             </TabsTrigger>
           </TabsList>
         </div>
         
         <TabsContent value="current" className="mt-6">
-          {/* Assignment / Tasks Dashboard */}
-          {assignmentsLoading ? (
+          {/* Current Assignments Dashboard */}
+          {currentAssignmentsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col p-6 space-y-4">
@@ -158,12 +167,12 @@ export default function Planner() {
                 </div>
               ))}
             </div>
-          ) : sortedAssignments.length === 0 ? (
+          ) : sortedCurrentAssignments.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <i className="ri-task-line text-5xl"></i>
               </div>
-              <h3 className="text-lg font-medium text-gray-900">No assignments yet</h3>
+              <h3 className="text-lg font-medium text-gray-900">No current assignments</h3>
               <p className="mt-1 text-sm text-gray-500">Create your first assignment to get started</p>
               <Button className="mt-4" onClick={() => setNewAssignmentOpen(true)}>
                 <i className="ri-add-line mr-1"></i>
@@ -172,7 +181,7 @@ export default function Planner() {
             </div>
           ) : (
             <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''} gap-6`}>
-              {sortedAssignments.map((assignment) => (
+              {sortedCurrentAssignments.map((assignment) => (
                 <AssignmentCard
                   key={assignment.id}
                   assignment={assignment}
@@ -185,16 +194,42 @@ export default function Planner() {
           )}
         </TabsContent>
         
-        <TabsContent value="all">
-          <div className="py-12 text-center text-gray-500">
-            All assignments will be shown here
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="completed">
-          <div className="py-12 text-center text-gray-500">
-            Completed assignments will be shown here
-          </div>
+        <TabsContent value="completed" className="mt-6">
+          {/* Completed Assignments Dashboard */}
+          {completedAssignmentsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col p-6 space-y-4">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sortedCompletedAssignments.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <i className="ri-check-double-line text-5xl"></i>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">No completed assignments</h3>
+              <p className="mt-1 text-sm text-gray-500">Completed assignments will appear here</p>
+            </div>
+          ) : (
+            <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''} gap-6`}>
+              {sortedCompletedAssignments.map((assignment) => (
+                <AssignmentCard
+                  key={assignment.id}
+                  assignment={assignment}
+                  isActive={false} // Completed assignments are never active
+                  viewMode={viewMode}
+                  onRefresh={refreshData}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
