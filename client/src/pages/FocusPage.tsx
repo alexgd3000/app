@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
+import { ScheduleItem } from "@shared/schema";
 import { format } from "date-fns";
 
 export default function FocusPage() {
@@ -7,7 +8,7 @@ export default function FocusPage() {
     data: scheduleData = [], 
     isLoading: scheduleLoading,
     refetch: refetchSchedule
-  } = useQuery({
+  } = useQuery<ScheduleItem[]>({
     queryKey: ['/api/schedule', format(new Date(), 'yyyy-MM-dd')],
   });
 

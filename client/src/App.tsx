@@ -15,7 +15,7 @@ import AppLayout from "@/components/AppLayout";
 function Router() {
   return (
     <Switch>
-      <Route path="/" exact>
+      <Route path="/">
         <Redirect to="/planner" />
       </Route>
       <Route path="/profile">

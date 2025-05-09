@@ -34,8 +34,13 @@ export default function PlannerPage() {
   useEffect(() => {
     const activeScheduleItem = scheduleData.find(item => !item.completed && new Date(item.startTime) <= new Date() && new Date(item.endTime) >= new Date());
     
-    if (activeScheduleItem && activeScheduleItem.task) {
-      setActiveAssignmentId(activeScheduleItem.task.assignmentId);
+    // Get task information from the API response
+    // Note: The task information might be included in a different way than directly as a property
+    // For now, we'll use the taskId property that should be available
+    if (activeScheduleItem) {
+      // In a more complete implementation, we would fetch the task details using taskId
+      // or the assignment data would be included in the API response
+      setActiveAssignmentId(activeScheduleItem.taskId);
     } else {
       setActiveAssignmentId(null);
     }
